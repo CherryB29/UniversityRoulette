@@ -3,29 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>전국 대학 룰렛</title>
+    <title>대학 룰렛</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Pretendard Font -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
-    <!-- Canvas Confetti -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         body {
             font-family: 'Pretendard', sans-serif;
             background-color: #f8fafc;
             color: #0f172a;
-            overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+            min-h-screen;
         }
 
         /* 룰렛 메인 컨테이너 */
         .wheel-container {
             position: relative;
             width: 100%;
-            max-width: 480px;
+            max-width: 460px;
             aspect-ratio: 1 / 1;
             margin: 0 auto;
             touch-action: none;
@@ -42,6 +47,7 @@
             border-radius: 50%;
             background: #ffffff;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+            display: block;
         }
 
         /* 상단 핀 (포인터) */
@@ -91,24 +97,39 @@
             0% { opacity: 0; transform: scale(0.6); }
             100% { opacity: 1; transform: scale(1); }
         }
+
+        /* 폭죽 전용 오버레이 캔버스 */
+        #confettiCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 60;
+        }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col relative">
+<body class="min-h-screen flex flex-col bg-slate-50 relative">
 
-    <!-- 상단 헤더 -->
-    <header class="w-full h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 relative shrink-0">
-        <button id="menuBtn" class="p-2 -ml-2 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed">
+    <!-- 폭죽 전용 캔버스 (이상한 큰 원 버그 방지) -->
+    <canvas id="confettiCanvas"></canvas>
+
+    <!-- 상단 헤더 (항상 보이도록 sticky 지정) -->
+    <header class="sticky top-0 w-full h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 shadow-sm">
+        <button id="menuBtn" class="p-2 -ml-2 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            <span class="text-xs font-bold text-slate-600">대학 목록 설정</span>
         </button>
-        <h1 class="text-xl font-extrabold tracking-tight text-slate-900">University Roulette</h1>
+        <h1 class="text-lg font-extrabold tracking-tight text-slate-900">University Roulette</h1>
         <div class="w-10"></div>
     </header>
 
     <!-- 메인 룰렛 영역 -->
-    <main class="flex-1 flex flex-col items-center justify-center p-4 bg-slate-50 relative z-0">
-        <div class="w-full max-w-lg mx-auto flex flex-col items-center">
+    <main class="flex-1 flex flex-col items-center justify-center p-4 relative z-0 my-auto">
+        <div class="w-full max-w-lg mx-auto flex flex-col items-center py-4">
             
-            <div class="wheel-container mb-8" id="wheelContainer">
+            <div class="wheel-container mb-6" id="wheelContainer">
                 <div class="pointer"></div>
                 <div class="center-pin"></div>
                 <canvas id="rouletteCanvas"></canvas>
@@ -118,7 +139,7 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
                 추첨 시작!
             </button>
-            <p class="text-center text-slate-400 mt-3 text-xs font-medium">💡 룰렛을 직접 터치해서 돌려볼 수도 있습니다!</p>
+            <p class="text-center text-slate-400 mt-3 text-xs font-medium">💡 룰렛을 직접 손으로 돌려볼 수도 있습니다.</p>
         </div>
     </main>
 
@@ -155,10 +176,11 @@
         </div>
     </aside>
 
-    <!-- 심플 결과 모달 (완전 네모난 카드 형태) -->
+    <!-- 심플 네모 팝업 모달 -->
     <div id="resultModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div id="modalContent" class="bg-white rounded-2xl p-6 w-full max-w-xs text-center shadow-2xl relative z-10 border border-slate-100">
-            <h2 id="winnerName" class="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight my-6">
+        <div id="modalContent" class="bg-white rounded-2xl p-6 w-full max-w-xs text-center shadow-2xl relative z-10 border border-slate-100 hidden">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">당첨 결과</p>
+            <h2 id="winnerName" class="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight my-5">
                 <!-- 결과 대학교 명칭 -->
             </h2>
             
@@ -306,7 +328,6 @@
             spinBtn.disabled = disabled;
             menuBtn.disabled = disabled;
             
-            // 사이드바 내부 인풋 및 버튼들도 잠금
             const inputs = sidebar.querySelectorAll('input, button');
             inputs.forEach(el => el.disabled = disabled);
         }
@@ -359,7 +380,7 @@
         function applyInertia() {
             if (isDragging) return;
             currentAngle += angularVelocity;
-            angularVelocity *= 0.95; // 마찰력
+            angularVelocity *= 0.95;
 
             drawWheel();
 
@@ -378,7 +399,7 @@
         window.addEventListener('touchmove', onDragMove, { passive: true });
         window.addEventListener('touchend', onDragEnd);
 
-        // --- 자동 추첨 (Eased Spin) ---
+        // --- 자동 추첨 ---
         function easeOutQuart(t) {
             return 1 - Math.pow(1 - t, 5);
         }
@@ -425,7 +446,7 @@
             animationFrameId = requestAnimationFrame(animateSpin);
         }
 
-        // 12시 방향 바늘 기준 당첨자 정확히 계산
+        // 12시 방향 바늘 기준 당첨자 산출
         function determineWinnerAndShowModal() {
             const activeItems = universities.filter(u => u.active);
             const sliceAngle = (2 * Math.PI) / activeItems.length;
@@ -433,7 +454,6 @@
             let normalizedAngle = currentAngle % (2 * Math.PI);
             if (normalizedAngle < 0) normalizedAngle += 2 * Math.PI;
 
-            // 12시 방향 (1.5 * Math.PI) 기준 계산
             let offset = (1.5 * Math.PI - normalizedAngle) % (2 * Math.PI);
             if (offset < 0) offset += 2 * Math.PI;
 
@@ -443,14 +463,62 @@
             showModal(winner);
         }
 
-        // 깔끔한 축하 파티클
-        function triggerConfetti() {
-            confetti({
-                particleCount: 60,
-                spread: 60,
-                origin: { y: 0.6 },
-                colors: ['#0f172a', '#3b82f6', '#10b981', '#f59e0b']
+        // --- 경량화 자체 폭죽 엔진 (버그 방지) ---
+        const confettiCanvas = document.getElementById('confettiCanvas');
+        const confettiCtx = confettiCanvas.getContext('2d');
+        let confettiParticles = [];
+
+        function resizeConfettiCanvas() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeConfettiCanvas);
+        resizeConfettiCanvas();
+
+        function triggerCustomConfetti() {
+            confettiParticles = [];
+            const colors = ['#0f172a', '#3b82f6', '#10b981', '#f59e0b', '#ec4899'];
+            
+            for (let i = 0; i < 70; i++) {
+                confettiParticles.push({
+                    x: window.innerWidth / 2,
+                    y: window.innerHeight / 2 + 50,
+                    vx: (Math.random() - 0.5) * 16,
+                    vy: (Math.random() - 0.7) * 18,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    alpha: 1,
+                    decay: Math.random() * 0.015 + 0.008
+                });
+            }
+            animateConfetti();
+        }
+
+        function animateConfetti() {
+            confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            let active = false;
+
+            confettiParticles.forEach(p => {
+                if (p.alpha > 0) {
+                    active = true;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.3; // 중력
+                    p.alpha -= p.decay;
+
+                    confettiCtx.save();
+                    confettiCtx.globalAlpha = Math.max(0, p.alpha);
+                    confettiCtx.fillStyle = p.color;
+                    confettiCtx.fillRect(p.x, p.y, p.size, p.size);
+                    confettiCtx.restore();
+                }
             });
+
+            if (active) {
+                requestAnimationFrame(animateConfetti);
+            } else {
+                confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            }
         }
 
         // 모달창 열기
@@ -461,14 +529,13 @@
             modalContent.classList.remove('hidden');
             modalContent.classList.add('pop-in');
             
-            triggerConfetti();
+            triggerCustomConfetti();
         }
 
-        // 모달창 닫기 (컨트롤 해제 처리)
+        // 모달창 닫기
         function closeModal() {
             modalContent.classList.remove('pop-in');
             modal.classList.add('hidden');
-            
             setControlsDisabled(false);
         }
 
