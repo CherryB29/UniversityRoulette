@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>대학 룰렛</title>
+    <title>전국 대학 룰렛 & 대격투</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Pretendard Font -->
@@ -23,23 +23,20 @@
             -webkit-user-select: none;
             margin: 0;
             padding: 0;
-            min-h-screen;
+            overflow-x: hidden;
         }
 
-        /* 룰렛 메인 컨테이너 */
         .wheel-container {
             position: relative;
             width: 100%;
-            max-width: 460px;
+            max-width: 440px;
             aspect-ratio: 1 / 1;
             margin: 0 auto;
             touch-action: none;
             cursor: grab;
         }
 
-        .wheel-container:active {
-            cursor: grabbing;
-        }
+        .wheel-container:active { cursor: grabbing; }
 
         canvas#rouletteCanvas {
             width: 100%;
@@ -50,7 +47,6 @@
             display: block;
         }
 
-        /* 상단 핀 (포인터) */
         .pointer {
             position: absolute;
             top: -14px;
@@ -65,7 +61,6 @@
             filter: drop-shadow(0 3px 3px rgba(0,0,0,0.2));
         }
 
-        /* 중앙 핀 */
         .center-pin {
             position: absolute;
             top: 50%;
@@ -81,54 +76,83 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.12);
         }
 
-        /* 커스텀 스크롤바 */
         .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
         .btn-spin:active { transform: scale(0.97); }
 
-        /* 심플 모달 팝업 애니메이션 */
-        .pop-in {
-            animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
-
+        .pop-in { animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         @keyframes popIn {
             0% { opacity: 0; transform: scale(0.6); }
             100% { opacity: 1; transform: scale(1); }
         }
 
-        /* 폭죽 전용 오버레이 캔버스 */
         #confettiCanvas {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
             pointer-events: none;
             z-index: 60;
         }
+
+        .toggle-checkbox:checked { right: 0; border-color: #0f172a; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #0f172a; }
+
+        .shake-screen { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both; }
+        .shake-screen-heavy { animation: shakeHeavy 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 1px, 0); }
+            20%, 80% { transform: translate3d(3px, -2px, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 3px, 0); }
+            40%, 60% { transform: translate3d(4px, -3px, 0); }
+        }
+
+        @keyframes shakeHeavy {
+            10%, 90% { transform: translate3d(-5px, 3px, 0); }
+            20%, 80% { transform: translate3d(6px, -4px, 0); }
+            30%, 50%, 70% { transform: translate3d(-8px, 6px, 0); }
+            40%, 60% { transform: translate3d(8px, -6px, 0); }
+        }
+
+        /* 격투 게임 스타일 이중 체력바 */
+        .hp-layer-bg { background-color: #1e293b; }
+        .hp-layer-trail { transition: width 0.5s ease-out; }
+        .hp-layer-main { transition: width 0.1s ease-out; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col bg-slate-50 relative">
 
-    <!-- 폭죽 전용 캔버스 (이상한 큰 원 버그 방지) -->
     <canvas id="confettiCanvas"></canvas>
 
-    <!-- 상단 헤더 (항상 보이도록 sticky 지정) -->
+    <!-- 상단 헤더 -->
     <header class="sticky top-0 w-full h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 shadow-sm">
         <button id="menuBtn" class="p-2 -ml-2 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-            <span class="text-xs font-bold text-slate-600">대학 목록 설정</span>
+            <span class="text-xs font-bold text-slate-600 hidden sm:inline">설정 / 대학 목록</span>
         </button>
-        <h1 class="text-lg font-extrabold tracking-tight text-slate-900">University Roulette</h1>
+        <div class="flex items-center gap-2">
+            <h1 class="text-lg font-extrabold tracking-tight text-slate-900">University Roulette</h1>
+            <span id="battleModeBadge" class="hidden px-2 py-0.5 text-[10px] font-black tracking-wider text-red-600 bg-red-50 border border-red-200 rounded-full uppercase animate-pulse">
+                VS Battle ON
+            </span>
+        </div>
         <div class="w-10"></div>
     </header>
 
-    <!-- 메인 룰렛 영역 -->
-    <main class="flex-1 flex flex-col items-center justify-center p-4 relative z-0 my-auto">
-        <div class="w-full max-w-lg mx-auto flex flex-col items-center py-4">
+    <!-- 메인 룰렛 화면 -->
+    <main id="mainRouletteView" class="flex-1 flex flex-col items-center justify-center p-4 relative z-0 my-auto">
+        <div class="w-full max-w-lg mx-auto flex flex-col items-center py-2">
             
+            <div id="battleStatusBanner" class="hidden w-full max-w-md bg-slate-900 text-white p-3 rounded-2xl mb-4 shadow-lg flex items-center justify-between px-5 transition-all">
+                <div class="flex items-center gap-3">
+                    <span class="w-3 h-3 rounded-full bg-blue-400 animate-ping"></span>
+                    <span id="battleStatusText" class="text-sm font-bold">1차 선발: 블루 코너 추첨 중...</span>
+                </div>
+                <span class="text-xs font-semibold bg-slate-800 px-2.5 py-1 rounded-lg text-slate-300">대격투 준비</span>
+            </div>
+
             <div class="wheel-container mb-6" id="wheelContainer">
                 <div class="pointer"></div>
                 <div class="center-pin"></div>
@@ -137,20 +161,78 @@
 
             <button id="spinBtn" class="btn-spin w-full max-w-md py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
-                추첨 시작!
+                <span id="spinBtnText">추첨 시작!</span>
             </button>
-            <p class="text-center text-slate-400 mt-3 text-xs font-medium">💡 룰렛을 직접 손으로 돌려볼 수도 있습니다.</p>
+            <p class="text-center text-slate-400 mt-3 text-xs font-medium">💡 룰렛을 직접 터치해서 돌려볼 수도 있습니다.</p>
         </div>
     </main>
+
+    <!-- 2D 격투 경기장 화면 -->
+    <div id="battleArenaView" class="fixed inset-0 bg-slate-950 z-40 hidden flex flex-col justify-between p-2 md:p-4 overflow-hidden">
+        
+        <!-- 상단 격투게임 스타일 체력바 UI -->
+        <div class="w-full max-w-5xl mx-auto bg-slate-900/90 backdrop-blur-md p-3 md:p-5 rounded-2xl border border-slate-800 shadow-2xl flex flex-col gap-3">
+            
+            <div class="flex items-center justify-between text-white font-black text-base md:text-2xl px-1">
+                <div class="flex items-center gap-2 text-blue-400 w-[40%]">
+                    <span id="blueTeamName" class="truncate drop-shadow-md">블루 대학</span>
+                </div>
+                <div class="text-red-500 font-black tracking-[0.2em] italic text-xl drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">
+                    VS
+                </div>
+                <div class="flex items-center gap-2 text-red-400 w-[40%] justify-end">
+                    <span id="redTeamName" class="truncate text-right drop-shadow-md">레드 대학</span>
+                </div>
+            </div>
+
+            <!-- 격투게임 체력바 트랙 (이중 레이어) -->
+            <div class="grid grid-cols-2 gap-2 md:gap-6 items-center">
+                <!-- Blue HP (왼쪽에서 오른쪽으로 차오름) -->
+                <div class="w-full h-6 md:h-8 hp-layer-bg rounded-r-lg border-y-2 border-r-2 border-slate-700 relative overflow-hidden transform skew-x-[-10deg]">
+                    <div id="blueHpTrail" class="hp-layer-trail absolute left-0 top-0 h-full bg-yellow-400 w-full"></div>
+                    <div id="blueHpMain" class="hp-layer-main absolute left-0 top-0 h-full bg-gradient-to-r from-blue-700 to-cyan-400 w-full border-r-2 border-white/50"></div>
+                </div>
+                
+                <!-- Red HP (오른쪽에서 왼쪽으로 차오름) -->
+                <div class="w-full h-6 md:h-8 hp-layer-bg rounded-l-lg border-y-2 border-l-2 border-slate-700 relative overflow-hidden transform skew-x-[10deg]">
+                    <div id="redHpTrail" class="hp-layer-trail absolute right-0 top-0 h-full bg-yellow-400 w-full"></div>
+                    <div id="redHpMain" class="hp-layer-main absolute right-0 top-0 h-full bg-gradient-to-l from-red-700 to-amber-500 w-full border-l-2 border-white/50"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2D 전투 캔버스 -->
+        <div class="flex-1 my-2 md:my-3 relative w-full max-w-5xl mx-auto rounded-xl overflow-hidden border-2 border-slate-800 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-700 via-slate-900 to-black shadow-[inset_0_0_50px_rgba(0,0,0,0.8)] flex items-center justify-center">
+            <canvas id="battleCanvas" class="w-full h-full block"></canvas>
+            
+            <!-- 전투 결과 오버레이 -->
+            <div id="battleResultOverlay" class="absolute inset-0 bg-black/70 hidden flex-col items-center justify-center backdrop-blur-sm z-20">
+                <h3 class="text-4xl md:text-6xl text-amber-400 font-black mb-4 tracking-widest italic drop-shadow-[0_0_15px_rgba(245,158,11,0.8)]">K.O!</h3>
+                <h2 id="battleWinnerText" class="text-3xl md:text-5xl font-extrabold text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] mb-8">
+                    <!-- 승자 표시 -->
+                </h2>
+                <button id="returnFromBattleBtn" class="px-8 py-4 bg-slate-100 hover:bg-white text-slate-900 rounded-xl font-bold text-lg transition-all shadow-[0_0_20px_rgba(255,255,255,0.4)]">
+                    대격투 종료 및 복귀
+                </button>
+            </div>
+        </div>
+
+        <div class="w-full max-w-5xl mx-auto flex justify-between items-center px-2 py-1">
+            <span class="text-xs text-slate-500 font-medium hidden md:block">AI 물리 엔진: 회피 / 돌진 / 투사체 활성화</span>
+            <button id="exitBattleEarlyBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors border border-slate-700 ml-auto">
+                전투 강제 종료
+            </button>
+        </div>
+    </div>
 
     <!-- 사이드바 오버레이 -->
     <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden opacity-0 transition-opacity duration-300 backdrop-blur-sm"></div>
 
-    <!-- 사이드바 (대학 편집 메뉴) -->
+    <!-- 사이드바 -->
     <aside id="sidebar" class="fixed top-0 left-0 bottom-0 w-[320px] max-w-[85vw] bg-white z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col shadow-2xl border-r border-slate-200">
         <div class="p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
             <div>
-                <h2 class="text-lg font-bold text-slate-900">대학 목록 편집</h2>
+                <h2 class="text-lg font-bold text-slate-900">대학 목록 & 설정</h2>
                 <p class="text-xs font-semibold text-slate-500 mt-0.5" id="countDisplay">총 0개 선택됨</p>
             </div>
             <button id="closeSidebarBtn" class="p-2 -mr-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors focus:outline-none">
@@ -158,6 +240,21 @@
             </button>
         </div>
         
+        <div class="p-4 border-b border-slate-100 bg-gradient-to-r from-red-50 to-amber-50 shrink-0">
+            <div class="flex items-center justify-between">
+                <div>
+                    <span class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                        ⚔️ 대격투 모드
+                    </span>
+                    <p class="text-[10px] text-slate-500 mt-0.5 leading-tight">2번 추첨 후 AI 2D 격투 시뮬레이션 진행</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="battleToggle" class="sr-only peer">
+                    <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500 shadow-inner"></div>
+                </label>
+            </div>
+        </div>
+
         <div class="p-3 border-b border-slate-100 bg-slate-50 shrink-0">
             <div class="relative">
                 <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -171,19 +268,14 @@
             <button id="shuffleBtn" class="text-xs font-semibold px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors">순서 섞기</button>
         </div>
 
-        <div id="universityList" class="flex-1 overflow-y-auto p-3 custom-scrollbar flex flex-col gap-1.5 bg-slate-50">
-            <!-- 대학 목록 주입 -->
-        </div>
+        <div id="universityList" class="flex-1 overflow-y-auto p-3 custom-scrollbar flex flex-col gap-1.5 bg-slate-50"></div>
     </aside>
 
-    <!-- 심플 네모 팝업 모달 -->
+    <!-- 심플 네모 팝업 모달 (일반 룰렛용) -->
     <div id="resultModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div id="modalContent" class="bg-white rounded-2xl p-6 w-full max-w-xs text-center shadow-2xl relative z-10 border border-slate-100 hidden">
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">당첨 결과</p>
-            <h2 id="winnerName" class="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight my-5">
-                <!-- 결과 대학교 명칭 -->
-            </h2>
-            
+            <p id="modalSubTitle" class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">당첨 결과</p>
+            <h2 id="winnerName" class="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight my-5"></h2>
             <button id="closeModalBtn" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-base transition-colors shadow-md">
                 확인
             </button>
@@ -191,7 +283,6 @@
     </div>
 
     <script>
-        // 한국 주요 대학교 정식 명칭 (약 90여 개)
         const rawUniversities = [
             '서울대학교', '연세대학교', '고려대학교', '서강대학교', '성균관대학교', '한양대학교', 
             '중앙대학교', '경희대학교', '한국외국어대학교', '서울시립대학교', '이화여자대학교', '건국대학교', 
@@ -212,7 +303,6 @@
             '연세대(미래)', '한림대학교', '상지대학교', '가톨릭관동대학교', '한라대학교'
         ];
 
-        // 배열 무작위 셔플 함수
         function shuffleArray(array) {
             const arr = [...array];
             for (let i = arr.length - 1; i > 0; i--) {
@@ -222,17 +312,15 @@
             return arr;
         }
 
-        // 대학 목록을 무작위로 섞어서 초기화
         let universities = shuffleArray(rawUniversities).map((name, index) => ({
-            id: index,
-            name: name,
-            active: true
+            id: index, name: name, active: true
         }));
 
-        // 파스텔 계열 슬레이트 색상
         const colors = ['#f8fafc', '#f1f5f9', '#e2e8f0']; 
 
-        // 룰렛 상태 변수
+        let isBattleMode = false;
+        let selectedFighters = []; 
+
         let searchQuery = '';
         let currentAngle = 0; 
         let angularVelocity = 0;
@@ -242,19 +330,34 @@
         let lastTouchAngle = 0;
         let animationFrameId = null;
         
-        // DOM 요소
         const listContainer = document.getElementById('universityList');
         const countDisplay = document.getElementById('countDisplay');
         const spinBtn = document.getElementById('spinBtn');
+        const spinBtnText = document.getElementById('spinBtnText');
         const menuBtn = document.getElementById('menuBtn');
         const modal = document.getElementById('resultModal');
         const modalContent = document.getElementById('modalContent');
+        const modalSubTitle = document.getElementById('modalSubTitle');
         const searchInput = document.getElementById('searchInput');
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
         const wheelContainer = document.getElementById('wheelContainer');
+        const battleToggle = document.getElementById('battleToggle');
+        const battleModeBadge = document.getElementById('battleModeBadge');
+        const battleStatusBanner = document.getElementById('battleStatusBanner');
+        const battleStatusText = document.getElementById('battleStatusText');
+
+        const mainRouletteView = document.getElementById('mainRouletteView');
+        const battleArenaView = document.getElementById('battleArenaView');
+        const blueTeamName = document.getElementById('blueTeamName');
+        const redTeamName = document.getElementById('redTeamName');
+        const blueHpBar = document.getElementById('blueHpMain');
+        const blueHpTrail = document.getElementById('blueHpTrail');
+        const redHpBar = document.getElementById('redHpMain');
+        const redHpTrail = document.getElementById('redHpTrail');
+        const battleResultOverlay = document.getElementById('battleResultOverlay');
+        const battleWinnerText = document.getElementById('battleWinnerText');
         
-        // Canvas 설정
         const canvas = document.getElementById('rouletteCanvas');
         const ctx = canvas.getContext('2d');
         
@@ -267,7 +370,6 @@
             drawWheel();
         }
 
-        // 룰렛 화면 그리기
         function drawWheel(angleOffset = currentAngle) {
             const activeItems = universities.filter(u => u.active);
             const size = canvas.clientWidth;
@@ -296,7 +398,6 @@
                 const startAngle = angleOffset + i * sliceAngle;
                 const endAngle = startAngle + sliceAngle;
 
-                // 조각
                 ctx.beginPath();
                 ctx.moveTo(cx, cy);
                 ctx.arc(cx, cy, radius, startAngle, endAngle);
@@ -306,7 +407,6 @@
                 ctx.strokeStyle = "#ffffff";
                 ctx.stroke();
 
-                // 글자
                 ctx.save();
                 ctx.translate(cx, cy);
                 ctx.rotate(startAngle + sliceAngle / 2);
@@ -323,16 +423,12 @@
             }
         }
 
-        // --- 회전 도중 버튼 및 입력 요소 잠금/해제 ---
         function setControlsDisabled(disabled) {
             spinBtn.disabled = disabled;
             menuBtn.disabled = disabled;
-            
-            const inputs = sidebar.querySelectorAll('input, button');
-            inputs.forEach(el => el.disabled = disabled);
+            sidebar.querySelectorAll('input, button').forEach(el => el.disabled = disabled);
         }
 
-        // --- 터치/드래그 물리 조작 ---
         function getEventAngle(e) {
             const rect = canvas.getBoundingClientRect();
             const cx = rect.left + rect.width / 2;
@@ -356,7 +452,6 @@
             if (!isDragging) return;
             const angle = getEventAngle(e);
             let diff = angle - lastTouchAngle;
-            
             if (diff > Math.PI) diff -= 2 * Math.PI;
             if (diff < -Math.PI) diff += 2 * Math.PI;
 
@@ -369,19 +464,14 @@
         function onDragEnd() {
             if (!isDragging) return;
             isDragging = false;
-            
-            if (Math.abs(angularVelocity) > 0.01) {
-                applyInertia();
-            } else {
-                setControlsDisabled(false);
-            }
+            if (Math.abs(angularVelocity) > 0.01) applyInertia();
+            else setControlsDisabled(false);
         }
 
         function applyInertia() {
             if (isDragging) return;
             currentAngle += angularVelocity;
             angularVelocity *= 0.95;
-
             drawWheel();
 
             if (Math.abs(angularVelocity) > 0.001) {
@@ -394,21 +484,17 @@
         wheelContainer.addEventListener('mousedown', onDragStart);
         window.addEventListener('mousemove', onDragMove);
         window.addEventListener('mouseup', onDragEnd);
-
         wheelContainer.addEventListener('touchstart', onDragStart, { passive: true });
         window.addEventListener('touchmove', onDragMove, { passive: true });
         window.addEventListener('touchend', onDragEnd);
 
-        // --- 자동 추첨 ---
-        function easeOutQuart(t) {
-            return 1 - Math.pow(1 - t, 5);
-        }
+        function easeOutQuart(t) { return 1 - Math.pow(1 - t, 5); }
 
         function startSpin() {
             if (isSpinning || isDragging) return;
             const activeItems = universities.filter(u => u.active);
-            if (activeItems.length === 0) {
-                alert("대학을 1개 이상 선택해주세요.");
+            if (activeItems.length < (isBattleMode ? 2 : 1)) {
+                alert(isBattleMode ? "격투 모드를 위해 대학을 최소 2개 이상 선택해주세요." : "대학을 1개 이상 선택해주세요.");
                 openSidebar();
                 return;
             }
@@ -416,41 +502,33 @@
             isSpinning = true;
             setControlsDisabled(true);
 
-            const baseSpins = 10 + Math.random() * 4; 
+            const baseSpins = 9 + Math.random() * 4; 
             const randomRotation = baseSpins * 2 * Math.PI + Math.random() * (2 * Math.PI);
-            
             const startAngle = currentAngle;
             const targetRotation = startAngle + randomRotation;
-            const duration = 5500;
+            const duration = 4500;
             const startTime = performance.now();
 
             function animateSpin(currentTime) {
                 const elapsed = currentTime - startTime;
                 let progress = elapsed / duration;
-                
                 if (progress >= 1) progress = 1;
 
-                const easedProgress = easeOutQuart(progress);
-                currentAngle = startAngle + (targetRotation - startAngle) * easedProgress;
-                
+                currentAngle = startAngle + (targetRotation - startAngle) * easeOutQuart(progress);
                 drawWheel(currentAngle);
 
-                if (progress < 1) {
-                    animationFrameId = requestAnimationFrame(animateSpin);
-                } else {
+                if (progress < 1) animationFrameId = requestAnimationFrame(animateSpin);
+                else {
                     isSpinning = false;
                     determineWinnerAndShowModal();
                 }
             }
-
             animationFrameId = requestAnimationFrame(animateSpin);
         }
 
-        // 12시 방향 바늘 기준 당첨자 산출
         function determineWinnerAndShowModal() {
             const activeItems = universities.filter(u => u.active);
             const sliceAngle = (2 * Math.PI) / activeItems.length;
-            
             let normalizedAngle = currentAngle % (2 * Math.PI);
             if (normalizedAngle < 0) normalizedAngle += 2 * Math.PI;
 
@@ -460,10 +538,24 @@
             const winnerIndex = Math.floor(offset / sliceAngle);
             const winner = activeItems[winnerIndex];
 
-            showModal(winner);
+            if (isBattleMode) handleBattleSelection(winner);
+            else showModal(winner, "당첨 결과");
         }
 
-        // --- 경량화 자체 폭죽 엔진 (버그 방지) ---
+        function handleBattleSelection(selectedUniv) {
+            selectedFighters.push(selectedUniv);
+
+            if (selectedFighters.length === 1) {
+                battleStatusText.textContent = `1차 선발 [${selectedUniv.name}] vs 2차 추첨 진행...`;
+                spinBtnText.textContent = "레드 코너(2차) 추첨하기";
+                showModal(selectedUniv, "1차 선발 (BLUE 팀)");
+            } else if (selectedFighters.length === 2) {
+                battleStatusText.textContent = `대결 준비 완료!`;
+                spinBtnText.textContent = "대격투 개시!";
+                showModal(selectedUniv, "2차 선발 (RED 팀)");
+            }
+        }
+
         const confettiCanvas = document.getElementById('confettiCanvas');
         const confettiCtx = confettiCanvas.getContext('2d');
         let confettiParticles = [];
@@ -477,18 +569,14 @@
 
         function triggerCustomConfetti() {
             confettiParticles = [];
-            const colors = ['#0f172a', '#3b82f6', '#10b981', '#f59e0b', '#ec4899'];
-            
+            const colors = ['#0f172a', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#ef4444'];
             for (let i = 0; i < 70; i++) {
                 confettiParticles.push({
-                    x: window.innerWidth / 2,
-                    y: window.innerHeight / 2 + 50,
-                    vx: (Math.random() - 0.5) * 16,
-                    vy: (Math.random() - 0.7) * 18,
+                    x: window.innerWidth / 2, y: window.innerHeight / 2,
+                    vx: (Math.random() - 0.5) * 16, vy: (Math.random() - 0.7) * 18,
                     size: Math.random() * 8 + 4,
                     color: colors[Math.floor(Math.random() * colors.length)],
-                    alpha: 1,
-                    decay: Math.random() * 0.015 + 0.008
+                    alpha: 1, decay: Math.random() * 0.015 + 0.008
                 });
             }
             animateConfetti();
@@ -497,15 +585,10 @@
         function animateConfetti() {
             confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
             let active = false;
-
             confettiParticles.forEach(p => {
                 if (p.alpha > 0) {
                     active = true;
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    p.vy += 0.3; // 중력
-                    p.alpha -= p.decay;
-
+                    p.x += p.vx; p.y += p.vy; p.vy += 0.3; p.alpha -= p.decay;
                     confettiCtx.save();
                     confettiCtx.globalAlpha = Math.max(0, p.alpha);
                     confettiCtx.fillStyle = p.color;
@@ -513,62 +596,509 @@
                     confettiCtx.restore();
                 }
             });
-
-            if (active) {
-                requestAnimationFrame(animateConfetti);
-            } else {
-                confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-            }
+            if (active) requestAnimationFrame(animateConfetti);
+            else confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
         }
 
-        // 모달창 열기
-        function showModal(winner) {
+        function showModal(winner, title = "당첨 결과") {
+            modalSubTitle.textContent = title;
             document.getElementById('winnerName').textContent = winner.name;
-
             modal.classList.remove('hidden');
             modalContent.classList.remove('hidden');
             modalContent.classList.add('pop-in');
-            
             triggerCustomConfetti();
         }
 
-        // 모달창 닫기
-        function closeModal() {
+        document.getElementById('closeModalBtn').addEventListener('click', () => {
             modalContent.classList.remove('pop-in');
             modal.classList.add('hidden');
             setControlsDisabled(false);
+
+            if (isBattleMode && selectedFighters.length === 2) {
+                start2DBattle(selectedFighters[0], selectedFighters[1]);
+            }
+        });
+
+
+        // ==========================================
+        // 격투 물리 & AI & 투사체 엔진 
+        // ==========================================
+        const battleCanvas = document.getElementById('battleCanvas');
+        const battleCtx = battleCanvas.getContext('2d');
+        
+        let battleAnimationFrame = null;
+        let fighter1, fighter2;
+        let battleParticles = [];
+        let damageTexts = [];
+        let projectiles = [];
+
+        function initBattleFighter(univ, isBlue, width, height) {
+            return {
+                name: univ.name,
+                x: isBlue ? width * 0.15 : width * 0.85,
+                y: height * 0.5,
+                vx: 0, vy: 0,
+                radius: 18, // 작고 민첩하게
+                color: isBlue ? '#3b82f6' : '#ef4444',
+                maxHp: 2000,
+                hp: 2000,
+                isBlue: isBlue,
+                cooldown: 0,
+                shield: 0,
+                history: [],
+                
+                // AI 상태 머신
+                state: 'IDLE', 
+                stateTimer: 0
+            };
         }
 
-        // 사이드바 목록 렌더링
+        function start2DBattle(univBlue, univRed) {
+            mainRouletteView.classList.add('hidden');
+            battleArenaView.classList.remove('hidden');
+            battleResultOverlay.classList.add('hidden');
+            battleResultOverlay.classList.remove('flex');
+
+            blueTeamName.textContent = univBlue.name;
+            redTeamName.textContent = univRed.name;
+
+            const rect = battleCanvas.parentElement.getBoundingClientRect();
+            battleCanvas.width = rect.width;
+            battleCanvas.height = rect.height;
+
+            fighter1 = initBattleFighter(univBlue, true, battleCanvas.width, battleCanvas.height);
+            fighter2 = initBattleFighter(univRed, false, battleCanvas.width, battleCanvas.height);
+
+            battleParticles = [];
+            damageTexts = [];
+            projectiles = [];
+
+            // UI 초기화
+            blueHpBar.style.width = '100%';
+            blueHpTrail.style.width = '100%';
+            redHpBar.style.width = '100%';
+            redHpTrail.style.width = '100%';
+
+            runBattleLoop();
+        }
+
+        function updateHpUI() {
+            const bPct = Math.max(0, (fighter1.hp / fighter1.maxHp) * 100);
+            const rPct = Math.max(0, (fighter2.hp / fighter2.maxHp) * 100);
+
+            // 메인 체력바는 즉각 감소
+            blueHpBar.style.width = `${bPct}%`;
+            redHpBar.style.width = `${rPct}%`;
+            
+            // 잔상 체력바는 CSS transition 적용되어 서서히 줄어듦
+            blueHpTrail.style.width = `${bPct}%`;
+            redHpTrail.style.width = `${rPct}%`;
+        }
+
+        function createParticles(x, y, color, count, speed = 8, sizeMult = 1) {
+            for (let i = 0; i < count; i++) {
+                battleParticles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * speed,
+                    vy: (Math.random() - 0.5) * speed,
+                    size: (Math.random() * 3 + 1.5) * sizeMult,
+                    color: color,
+                    alpha: 1.0,
+                    decay: Math.random() * 0.03 + 0.02
+                });
+            }
+        }
+
+        function createDamageText(x, y, text, color = '#ffffff', size = 16) {
+            // 스킬 이름은 배제하고 데미지만 표시
+            damageTexts.push({
+                x: x, y: y, text: text, color: color, size: size,
+                vy: -2, alpha: 1.2
+            });
+        }
+
+        function triggerScreenShake(heavy = false) {
+            const cls = heavy ? 'shake-screen-heavy' : 'shake-screen';
+            battleArenaView.classList.remove('shake-screen', 'shake-screen-heavy');
+            void battleArenaView.offsetWidth; 
+            battleArenaView.classList.add(cls);
+        }
+
+        // 투사체 발사 (메테오/파이어볼 등)
+        function shootProjectile(caster, target, type) {
+            const dx = target.x - caster.x;
+            const dy = target.y - caster.y;
+            const angle = Math.atan2(dy, dx);
+            
+            let color = '#f59e0b';
+            let speed = 15;
+            let radius = 10;
+            let dmg = Math.floor(Math.random() * 100 + 50);
+
+            if (type === 'plasma') {
+                color = '#06b6d4'; speed = 25; radius = 6; dmg = 40;
+            } else if (type === 'meteor') {
+                color = '#ef4444'; speed = 10; radius = 15; dmg = 150;
+            }
+
+            projectiles.push({
+                x: caster.x, y: caster.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                radius: radius, color: color,
+                damage: dmg, owner: caster, type: type
+            });
+        }
+
+        // 지능형 AI 상태 머신 및 스킬 로직
+        function updateFighterAI(f, opponent, w, h) {
+            f.stateTimer--;
+
+            const dx = opponent.x - f.x;
+            const dy = opponent.y - f.y;
+            const dist = Math.hypot(dx, dy);
+
+            // 상태 변경 결정
+            if (f.stateTimer <= 0) {
+                f.stateTimer = Math.random() * 40 + 20; // 20~60프레임마다 판단
+                const r = Math.random();
+
+                if (dist < 120) {
+                    // 가까울 때: 회피하거나 강하게 공격
+                    if (r < 0.4) f.state = 'EVADE';
+                    else if (r < 0.7) f.state = 'ATTACK';
+                    else f.state = 'RETREAT';
+                } else {
+                    // 멀 때: 쫓아가거나 원거리 견제
+                    if (r < 0.6) f.state = 'CHASE';
+                    else f.state = 'RANGED';
+                }
+            }
+
+            // 가속도 적용 (강한 마찰력을 이기기 위한 동력)
+            const speedAccel = 2.5; 
+            const angle = Math.atan2(dy, dx);
+
+            if (f.state === 'CHASE' || f.state === 'ATTACK') {
+                f.vx += Math.cos(angle) * speedAccel;
+                f.vy += Math.sin(angle) * speedAccel;
+            } else if (f.state === 'RETREAT') {
+                f.vx -= Math.cos(angle) * speedAccel;
+                f.vy -= Math.sin(angle) * speedAccel;
+            } else if (f.state === 'EVADE') {
+                // 직각으로 회피 (사이드 스텝)
+                const evadeAngle = angle + (Math.PI / 2) * (Math.random() > 0.5 ? 1 : -1);
+                f.vx += Math.cos(evadeAngle) * speedAccel * 1.5;
+                f.vy += Math.sin(evadeAngle) * speedAccel * 1.5;
+            }
+
+            // 스킬 사용 로직 (쿨타임 & 확률)
+            if (f.cooldown > 0) f.cooldown--;
+            if (f.cooldown <= 0 && Math.random() < 0.05) {
+                f.cooldown = Math.floor(Math.random() * 60 + 60); // 쿨타임
+                const skillRoll = Math.random();
+
+                if (skillRoll < 0.3) {
+                    // 대시 돌진
+                    f.vx = Math.cos(angle) * 35;
+                    f.vy = Math.sin(angle) * 35;
+                    createParticles(f.x, f.y, f.color, 10);
+                } else if (skillRoll < 0.5) {
+                    // 원거리 투사체 (메테오)
+                    shootProjectile(f, opponent, 'meteor');
+                } else if (skillRoll < 0.7) {
+                    // 빠른 투사체 (플라즈마)
+                    shootProjectile(f, opponent, 'plasma');
+                    shootProjectile(f, opponent, 'plasma'); // 2연발
+                } else {
+                    // 방어막
+                    f.shield = 150;
+                }
+            }
+
+            // 잔상 기록
+            f.history.unshift({x: f.x, y: f.y});
+            if (f.history.length > 5) f.history.pop();
+
+            f.x += f.vx;
+            f.y += f.vy;
+
+            // 매우 높은 마찰력 (얼음판처럼 미끄러지지 않도록)
+            f.vx *= 0.85;
+            f.vy *= 0.85;
+
+            // 벽 튕기기
+            if (f.x - f.radius < 0) { f.x = f.radius; f.vx *= -0.5; }
+            if (f.x + f.radius > w) { f.x = w - f.radius; f.vx *= -0.5; }
+            if (f.y - f.radius < 0) { f.y = f.radius; f.vy *= -0.5; }
+            if (f.y + f.radius > h) { f.y = h - f.radius; f.vy *= -0.5; }
+        }
+
+        function checkFighterCollision(f1, f2) {
+            const dx = f2.x - f1.x;
+            const dy = f2.y - f1.y;
+            const dist = Math.hypot(dx, dy);
+            const minDist = f1.radius + f2.radius;
+
+            if (dist < minDist) {
+                const angle = Math.atan2(dy, dx);
+                const overlap = minDist - dist;
+
+                // 물리적 겹침 해소
+                f1.x -= Math.cos(angle) * overlap * 0.5;
+                f1.y -= Math.sin(angle) * overlap * 0.5;
+                f2.x += Math.cos(angle) * overlap * 0.5;
+                f2.y += Math.sin(angle) * overlap * 0.5;
+
+                const speed1 = Math.hypot(f1.vx, f1.vy);
+                const speed2 = Math.hypot(f2.vx, f2.vy);
+                
+                // 가벼우므로 크게 튕겨남 (넉백)
+                const knockback = 8 + (speed1 + speed2) * 0.4;
+                f1.vx -= Math.cos(angle) * knockback;
+                f1.vy -= Math.sin(angle) * knockback;
+                f2.vx += Math.cos(angle) * knockback;
+                f2.vy += Math.sin(angle) * knockback;
+
+                // 몸통 박치기 데미지
+                let dmg1 = Math.floor(speed2 * 3) + 10;
+                let dmg2 = Math.floor(speed1 * 3) + 10;
+
+                if (f1.shield > 0) { let block = Math.min(f1.shield, dmg1); dmg1 -= block; f1.shield -= block; }
+                if (f2.shield > 0) { let block = Math.min(f2.shield, dmg2); dmg2 -= block; f2.shield -= block; }
+
+                f1.hp -= dmg1;
+                f2.hp -= dmg2;
+
+                if(dmg1 > 10 || dmg2 > 10) {
+                    createParticles((f1.x + f2.x) / 2, (f1.y + f2.y) / 2, '#ffffff', 15);
+                    if(dmg1 > 0) createDamageText(f1.x, f1.y - 20, `-${dmg1}`, '#ef4444');
+                    if(dmg2 > 0) createDamageText(f2.x, f2.y - 20, `-${dmg2}`, '#ef4444');
+                    triggerScreenShake();
+                }
+            }
+        }
+
+        function updateProjectiles() {
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // 벽 충돌 시 제거
+                if (p.x < 0 || p.x > battleCanvas.width || p.y < 0 || p.y > battleCanvas.height) {
+                    projectiles.splice(i, 1);
+                    continue;
+                }
+
+                // 상대방과의 충돌 판정
+                let target = p.owner === fighter1 ? fighter2 : fighter1;
+                let dist = Math.hypot(target.x - p.x, target.y - p.y);
+
+                if (dist < target.radius + p.radius) {
+                    // 히트!
+                    let dmg = p.damage;
+                    if (target.shield > 0) {
+                        let block = Math.min(target.shield, dmg);
+                        dmg -= block;
+                        target.shield -= block;
+                    }
+                    target.hp -= dmg;
+                    
+                    createParticles(p.x, p.y, p.color, 25, 12);
+                    if (dmg > 0) createDamageText(target.x, target.y - 25, `-${dmg}`, p.color, p.type === 'meteor' ? 22 : 16);
+                    if (p.type === 'meteor') triggerScreenShake(true);
+
+                    projectiles.splice(i, 1);
+                } else {
+                    // 투사체 그리기
+                    battleCtx.beginPath();
+                    battleCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    battleCtx.fillStyle = p.color;
+                    battleCtx.fill();
+                    battleCtx.shadowBlur = 15;
+                    battleCtx.shadowColor = p.color;
+                    battleCtx.shadowBlur = 0; // 초기화
+                }
+            }
+        }
+
+        function drawFighter(f) {
+            // 잔상(Trail)
+            if (f.history.length > 1) {
+                battleCtx.lineCap = 'round';
+                battleCtx.lineJoin = 'round';
+                battleCtx.beginPath();
+                battleCtx.moveTo(f.history[0].x, f.history[0].y);
+                for (let i = 1; i < f.history.length; i++) {
+                    battleCtx.lineTo(f.history[i].x, f.history[i].y);
+                }
+                battleCtx.strokeStyle = f.color;
+                battleCtx.lineWidth = f.radius;
+                battleCtx.globalAlpha = 0.4;
+                battleCtx.stroke();
+                battleCtx.globalAlpha = 1.0;
+            }
+
+            // 보호막
+            if (f.shield > 0) {
+                battleCtx.beginPath();
+                battleCtx.arc(f.x, f.y, f.radius + 5 + Math.random()*2, 0, Math.PI * 2);
+                battleCtx.strokeStyle = 'rgba(16, 185, 129, 0.9)';
+                battleCtx.lineWidth = 3;
+                battleCtx.stroke();
+            }
+
+            // 본체
+            battleCtx.beginPath();
+            battleCtx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+            battleCtx.fillStyle = f.color;
+            battleCtx.fill();
+            battleCtx.lineWidth = 2;
+            battleCtx.strokeStyle = '#ffffff';
+            battleCtx.stroke();
+
+            // 이름 표기 (원 아래쪽)
+            battleCtx.fillStyle = '#ffffff';
+            battleCtx.textAlign = 'center';
+            battleCtx.textBaseline = 'top';
+            battleCtx.font = `bold 12px Pretendard`;
+            
+            const textWidth = battleCtx.measureText(f.name).width;
+            battleCtx.fillStyle = 'rgba(0,0,0,0.6)';
+            battleCtx.fillRect(f.x - textWidth/2 - 4, f.y + f.radius + 3, textWidth + 8, 16);
+            
+            battleCtx.fillStyle = '#ffffff';
+            battleCtx.fillText(f.name, f.x, f.y + f.radius + 4);
+        }
+
+        function runBattleLoop() {
+            const w = battleCanvas.width;
+            const h = battleCanvas.height;
+
+            battleCtx.clearRect(0, 0, w, h);
+
+            updateFighterAI(fighter1, fighter2, w, h);
+            updateFighterAI(fighter2, fighter1, w, h);
+            checkFighterCollision(fighter1, fighter2);
+
+            updateProjectiles();
+
+            // 파티클 업데이트
+            battleParticles.forEach((p, idx) => {
+                p.x += p.vx; p.y += p.vy;
+                p.alpha -= p.decay;
+                if (p.alpha <= 0) battleParticles.splice(idx, 1);
+                else {
+                    battleCtx.save();
+                    battleCtx.globalAlpha = Math.max(0, p.alpha);
+                    battleCtx.fillStyle = p.color;
+                    battleCtx.beginPath();
+                    battleCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    battleCtx.fill();
+                    battleCtx.restore();
+                }
+            });
+
+            // 데미지 텍스트 렌더링
+            damageTexts.forEach((d, idx) => {
+                d.y += d.vy; d.alpha -= 0.02;
+                if (d.alpha <= 0) damageTexts.splice(idx, 1);
+                else {
+                    battleCtx.save();
+                    battleCtx.globalAlpha = Math.min(1, d.alpha);
+                    battleCtx.fillStyle = d.color;
+                    battleCtx.font = `bold ${d.size}px Pretendard`;
+                    battleCtx.textAlign = 'center';
+                    
+                    // 글씨 외곽선 처리로 가독성 증가
+                    battleCtx.strokeStyle = '#000000';
+                    battleCtx.lineWidth = 3;
+                    battleCtx.strokeText(d.text, d.x, d.y);
+                    battleCtx.fillText(d.text, d.x, d.y);
+                    battleCtx.restore();
+                }
+            });
+
+            drawFighter(fighter1);
+            drawFighter(fighter2);
+
+            updateHpUI();
+
+            // 승패 판정
+            if (fighter1.hp <= 0 || fighter2.hp <= 0) {
+                cancelAnimationFrame(battleAnimationFrame);
+                const winner = fighter1.hp > fighter2.hp ? fighter1 : fighter2;
+                
+                setTimeout(() => {
+                    battleResultOverlay.classList.remove('hidden');
+                    battleResultOverlay.classList.add('flex', 'pop-in');
+                    battleWinnerText.textContent = `${winner.name} 승리!`;
+                    battleWinnerText.style.color = winner.color;
+                    triggerCustomConfetti();
+                }, 500);
+                return;
+            }
+
+            battleAnimationFrame = requestAnimationFrame(runBattleLoop);
+        }
+
+        function forceExitBattle() {
+            if (battleAnimationFrame) cancelAnimationFrame(battleAnimationFrame);
+            battleArenaView.classList.add('hidden');
+            mainRouletteView.classList.remove('hidden');
+
+            selectedFighters = [];
+            if (isBattleMode) {
+                battleStatusText.textContent = "1차 선발: 블루 코너 추첨 중...";
+                spinBtnText.textContent = "블루 코너(1차) 추첨하기";
+            } else {
+                spinBtnText.textContent = "추첨 시작!";
+            }
+            setControlsDisabled(false);
+        }
+
+        document.getElementById('exitBattleEarlyBtn').addEventListener('click', forceExitBattle);
+        document.getElementById('returnFromBattleBtn').addEventListener('click', forceExitBattle);
+
+        battleToggle.addEventListener('change', (e) => {
+            isBattleMode = e.target.checked;
+            selectedFighters = [];
+            if (isBattleMode) {
+                battleModeBadge.classList.remove('hidden');
+                battleStatusBanner.classList.remove('hidden');
+                battleStatusText.textContent = "1차 선발: 블루 코너 추첨 중...";
+                spinBtnText.textContent = "블루 코너(1차) 추첨하기";
+            } else {
+                battleModeBadge.classList.add('hidden');
+                battleStatusBanner.classList.add('hidden');
+                spinBtnText.textContent = "추첨 시작!";
+            }
+        });
+
+        // ==========================================
+        // 사이드바 UI
+        // ==========================================
         function renderSidebar() {
             listContainer.innerHTML = '';
-            
-            const filteredUniversities = universities.filter(u => 
-                u.name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-
+            const filteredUniversities = universities.filter(u => u.name.toLowerCase().includes(searchQuery.toLowerCase()));
             const activeCount = universities.filter(u => u.active).length;
             countDisplay.textContent = `총 ${activeCount}개 선택됨`;
 
             filteredUniversities.forEach(u => {
                 const label = document.createElement('label');
                 label.className = `flex items-center gap-3 p-3 rounded-xl cursor-pointer bg-white border border-slate-200 transition-all ${u.active ? 'shadow-sm border-slate-300' : 'opacity-40 hover:opacity-100'}`;
-                
                 label.innerHTML = `
                     <div class="relative flex items-center">
                         <input type="checkbox" class="sr-only peer" ${u.active ? 'checked' : ''} data-id="${u.id}">
                         <div class="w-5 h-5 rounded border-2 border-slate-300 peer-checked:bg-slate-900 peer-checked:border-slate-900 transition-colors flex items-center justify-center">
-                            <svg class="w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
+                            <svg class="w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                         </div>
                     </div>
                 `;
-                
                 const span = document.createElement('span');
                 span.className = `text-sm font-semibold ${u.active ? 'text-slate-900' : 'text-slate-500'}`;
                 span.textContent = u.name;
-
                 label.appendChild(span);
 
                 const checkbox = label.querySelector('input');
@@ -578,12 +1108,10 @@
                     renderSidebar();
                     drawWheel();
                 });
-
                 listContainer.appendChild(label);
             });
         }
 
-        // 사이드바 제어
         function openSidebar() {
             if (isSpinning || isDragging) return;
             sidebarOverlay.classList.remove('hidden');
@@ -598,20 +1126,12 @@
             sidebar.classList.add('-translate-x-full');
             sidebarOverlay.classList.remove('opacity-100');
             sidebarOverlay.classList.add('opacity-0');
-            setTimeout(() => {
-                sidebarOverlay.classList.add('hidden');
-            }, 300);
+            setTimeout(() => sidebarOverlay.classList.add('hidden'), 300);
         }
 
-        // 이벤트 리스너
         window.addEventListener('resize', resizeCanvas);
         spinBtn.addEventListener('click', startSpin);
         
-        document.getElementById('closeModalBtn').addEventListener('click', closeModal);
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal();
-        });
-
         menuBtn.addEventListener('click', openSidebar);
         document.getElementById('closeSidebarBtn').addEventListener('click', closeSidebar);
         sidebarOverlay.addEventListener('click', closeSidebar);
@@ -624,25 +1144,21 @@
         document.getElementById('selectAllBtn').addEventListener('click', () => {
             if (isSpinning || isDragging) return;
             universities.forEach(u => u.active = true);
-            renderSidebar();
-            drawWheel();
+            renderSidebar(); drawWheel();
         });
 
         document.getElementById('deselectAllBtn').addEventListener('click', () => {
             if (isSpinning || isDragging) return;
             universities.forEach(u => u.active = false);
-            renderSidebar();
-            drawWheel();
+            renderSidebar(); drawWheel();
         });
 
         document.getElementById('shuffleBtn').addEventListener('click', () => {
             if (isSpinning || isDragging) return;
             universities = shuffleArray(universities);
-            renderSidebar();
-            drawWheel();
+            renderSidebar(); drawWheel();
         });
 
-        // 초기화
         renderSidebar();
         resizeCanvas();
 
