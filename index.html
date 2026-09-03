@@ -452,7 +452,7 @@
         });
 
         // ==========================================
-        // 대격투: Ultimate 물리 & AI & 화려한 스킬 엔진
+        // 대격투: 안정화 및 완전판 (수학적 보정 적용)
         // ==========================================
         const battleCanvas = document.getElementById('battleCanvas'), battleCtx = battleCanvas.getContext('2d');
         let battleAnimationFrame = null, fighter1, fighter2;
@@ -474,7 +474,6 @@
             { id: 'jump', name: '공중 도약' }, { id: 'push', name: '강력 밀치기' }
         ];
 
-        // customSkills가 있으면 재경기용
         function initBattleFighter(univ, isBlue, width, height, customSkills = null) {
             let mySkills = [];
             if (customSkills) {
@@ -490,7 +489,7 @@
 
             return {
                 name: univ.name, x: isBlue ? width * 0.15 : width * 0.85, y: height * 0.5,
-                vx: 0, vy: 0, z: 0, vz: 0, // z: 3D 높이
+                vx: 0, vy: 0, z: 0, vz: 0,
                 radius: 16, baseRadius: 16,
                 color: isBlue ? '#3b82f6' : '#ef4444',
                 colorLight: isBlue ? '#60a5fa' : '#f87171',
@@ -512,7 +511,9 @@
 
             blueTeamName.textContent = univBlue.name; redTeamName.textContent = univRed.name;
             const rect = battleCanvas.parentElement.getBoundingClientRect();
-            battleCanvas.width = rect.width; battleCanvas.height = rect.height;
+            // 캔버스 사이즈가 0일 경우 대비 방어 코드
+            battleCanvas.width = rect.width || window.innerWidth * 0.9; 
+            battleCanvas.height = rect.height || window.innerHeight * 0.6;
 
             fighter1 = initBattleFighter(univBlue, true, battleCanvas.width, battleCanvas.height, blueSkills);
             fighter2 = initBattleFighter(univRed, false, battleCanvas.width, battleCanvas.height, redSkills);
@@ -568,9 +569,14 @@
             visualEffects.push({ type: type, x: x, y: y, color: color, radius: 5, maxRadius: maxRadius, alpha: 1.0, angle: angle });
         }
 
+        function createDamageText(x, y, text, color = '#ffffff', size = 16) {
+            damageTexts.push({ x: x, y: y, text: text, color: color, size: size, vy: -2, alpha: 1.2 });
+        }
+
         function shootProjectile(caster, target, type, angleOffset=0) {
             const dx = target.x - caster.x, dy = target.y - caster.y;
-            let angle = Math.atan2(dy, dx) + angleOffset;
+            // 타겟과 동일한 위치일 때 각도 NaN 방어
+            let angle = (dx === 0 && dy === 0) ? 0 : Math.atan2(dy, dx) + angleOffset;
             let speed = 15, radius = 8, dmg = 50, life = 100, penetrate = false, homing = false;
             let c = caster.colorLight;
 
@@ -588,7 +594,7 @@
         }
 
         function applySkill(caster, target) {
-            if (caster.frozen > 0 || caster.z > 0) return; // 얼어있거나 공중에 떠있으면 스킬 발동 불가
+            if (caster.frozen > 0 || caster.z > 0) return; 
             if (caster.cooldown > 0) caster.cooldown--;
             
             if (caster.cooldown <= 0 && Math.random() < 0.035) {
@@ -596,6 +602,8 @@
                 const skill = caster.skills[Math.floor(Math.random() * 3)];
                 const c = caster.colorLight;
                 const baseC = caster.color;
+
+                const dist = Math.hypot(target.x - caster.x, target.y - caster.y) || 0.1; // NaN 보정
 
                 switch(skill.id) {
                     case 'dash':
@@ -616,7 +624,7 @@
                         addVisualEffect('ring', caster.x, caster.y, c, 250); triggerScreenShake(true);
                         break;
                     case 'gatling':
-                        for(let i=0; i<8; i++) shootProjectile(caster, target, 'bullet', (Math.random()-0.5)*0.5);
+                        for(let i=0; i<8; i++) setTimeout(() => shootProjectile(caster, target, 'bullet', (Math.random()-0.5)*0.5), i*80);
                         break;
                     case 'heal':
                         caster.hp = Math.min(caster.maxHp, caster.hp + 500);
@@ -651,12 +659,11 @@
                         for(let i=-3; i<=3; i++) shootProjectile(caster, target, 'bullet', i*0.25);
                         break;
                     case 'jump':
-                        caster.vz = 20; // 3D 점프 파워 (위로)
+                        caster.vz = 20; // Z축 도약
                         createParticles(caster.x, caster.y, '#ffffff', 20, 5);
                         break;
                     case 'push':
-                        const pDist = Math.hypot(target.x - caster.x, target.y - caster.y);
-                        if (pDist < 250) {
+                        if (dist < 250) {
                             const pAng = Math.atan2(target.y - caster.y, target.x - caster.x);
                             target.vx += Math.cos(pAng) * 45; target.vy += Math.sin(pAng) * 45;
                             target.hp -= 120;
@@ -669,25 +676,33 @@
             }
         }
 
+        function clampFighterVelocity(f) {
+            // 속도 이상 증폭(Infinity/NaN) 방지를 위한 절대 안전장치
+            const speedSq = f.vx * f.vx + f.vy * f.vy;
+            if (speedSq > 3600) { // max speed 60
+                const speed = Math.sqrt(speedSq) || 0.1;
+                f.vx = (f.vx / speed) * 60;
+                f.vy = (f.vy / speed) * 60;
+            }
+            if (isNaN(f.x) || isNaN(f.y)) { f.x = battleCanvas.width/2; f.y = battleCanvas.height/2; f.vx=0; f.vy=0; }
+        }
+
         function updateFighterAI(f, opponent, w, h) {
-            // 장외 이탈 방지 (안전망)
-            if (f.x < -50 || f.x > w + 50 || f.y < -50 || f.y > h + 50) {
-                f.x = w / 2; f.y = h / 2; f.vx = 0; f.vy = 0;
+            // 사라짐 방지: 무조건 캔버스 중앙으로 복귀 조치
+            if (f.x < -100 || f.x > w + 100 || f.y < -100 || f.y > h + 100 || isNaN(f.x)) {
+                f.x = w / 2; f.y = h / 2; f.vx = 0; f.vy = 0; f.z = 0;
             }
 
             if (f.gigant > 0) { f.gigant--; if (f.gigant <= 0) f.radius = f.baseRadius; }
             if (f.frozen > 0) { f.frozen--; return; } 
 
-            // 점프 상태(Z축 물리 엔진)
             if (f.z > 0 || f.vz > 0) {
-                f.z += f.vz;
-                f.vz -= 1.2; // 중력
+                f.z += f.vz; f.vz -= 1.2; 
                 if (f.z <= 0) {
-                    f.z = 0; f.vz = 0; // 착지
+                    f.z = 0; f.vz = 0; 
                     addVisualEffect('ring', f.x, f.y, f.color, 150);
                     triggerScreenShake(true);
-                    // 착지 시 주변에 데미지 + 강력한 넉백
-                    const dist = Math.hypot(opponent.x - f.x, opponent.y - f.y);
+                    const dist = Math.hypot(opponent.x - f.x, opponent.y - f.y) || 0.1;
                     if (dist < 180 && opponent.z === 0) {
                         const ang = Math.atan2(opponent.y - f.y, opponent.x - f.x);
                         opponent.vx += Math.cos(ang) * 35; opponent.vy += Math.sin(ang) * 35;
@@ -698,7 +713,8 @@
             }
 
             f.stateTimer--;
-            const dx = opponent.x - f.x, dy = opponent.y - f.y, dist = Math.hypot(dx, dy);
+            const dx = opponent.x - f.x, dy = opponent.y - f.y;
+            const dist = Math.hypot(dx, dy) || 0.1; // NaN 보정
 
             if (f.stateTimer <= 0) {
                 f.stateTimer = Math.random() * 30 + 15; 
@@ -710,7 +726,6 @@
                 }
             }
 
-            // 공중일 때는 가속도 절반
             const zPenalty = f.z > 0 ? 0.5 : 1.0;
             const speedAccel = (f.gigant > 0 ? 1.5 : 3.5) * zPenalty; 
             const angle = Math.atan2(dy, dx);
@@ -726,25 +741,32 @@
 
             applySkill(f, opponent);
 
-            if (f.z === 0) { // 땅에 있을 때만 잔상 기록
+            if (f.z === 0) { 
                 f.history.unshift({x: f.x, y: f.y}); if (f.history.length > 6) f.history.pop();
             }
 
             f.x += f.vx; f.y += f.vy;
             f.vx *= 0.88; f.vy *= 0.88; 
 
-            if (f.x - f.radius < 0) { f.x = f.radius; f.vx *= -0.8; }
-            if (f.x + f.radius > w) { f.x = w - f.radius; f.vx *= -0.8; }
-            if (f.y - f.radius < 0) { f.y = f.radius; f.vy *= -0.8; }
-            if (f.y + f.radius > h) { f.y = h - f.radius; f.vy *= -0.8; }
+            clampFighterVelocity(f); // 에러 방지
+
+            // 강력한 벽 반발력 (이탈 원천 차단)
+            if (f.x < f.radius) { f.x = f.radius; f.vx = Math.abs(f.vx) * 0.8; }
+            else if (f.x > w - f.radius) { f.x = w - f.radius; f.vx = -Math.abs(f.vx) * 0.8; }
+            if (f.y < f.radius) { f.y = f.radius; f.vy = Math.abs(f.vy) * 0.8; }
+            else if (f.y > h - f.radius) { f.y = h - f.radius; f.vy = -Math.abs(f.vy) * 0.8; }
         }
 
         function checkFighterCollision(f1, f2) {
-            // 한 명이라도 공중에 있으면 충돌 무시 (뛰어넘기 가능)
             if (f1.z > 0 || f2.z > 0) return;
 
-            const dx = f2.x - f1.x, dy = f2.y - f1.y;
-            const dist = Math.hypot(dx, dy), minDist = f1.radius + f2.radius;
+            let dx = f2.x - f1.x, dy = f2.y - f1.y;
+            let dist = Math.hypot(dx, dy);
+            
+            // 완벽히 겹쳤을 때의 NaN 에러 방지용 난수 배치
+            if (dist === 0) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; dist = 0.1; }
+            
+            const minDist = f1.radius + f2.radius;
             if (dist < minDist) {
                 const angle = Math.atan2(dy, dx), overlap = minDist - dist;
                 f1.x -= Math.cos(angle) * overlap * 0.5; f1.y -= Math.sin(angle) * overlap * 0.5;
@@ -754,6 +776,8 @@
                 const knockback = 5 + (speed1 + speed2) * 0.4;
                 f1.vx -= Math.cos(angle) * knockback; f1.vy -= Math.sin(angle) * knockback;
                 f2.vx += Math.cos(angle) * knockback; f2.vy += Math.sin(angle) * knockback;
+
+                clampFighterVelocity(f1); clampFighterVelocity(f2); // 과도한 넉백 억제
 
                 let dmg1 = Math.floor(speed2 * 5) + 15;
                 let dmg2 = Math.floor(speed1 * 5) + 15;
@@ -792,9 +816,10 @@
                 }
                 if (p.homing) {
                     let target = p.owner === fighter1 ? fighter2 : fighter1;
-                    let angle = Math.atan2(target.y - p.y, target.x - p.x);
+                    let pDx = target.x - p.x; let pDy = target.y - p.y;
+                    let angle = (pDx === 0 && pDy === 0) ? 0 : Math.atan2(pDy, pDx);
                     p.vx += Math.cos(angle) * 1.5; p.vy += Math.sin(angle) * 1.5;
-                    let spd = Math.hypot(p.vx, p.vy);
+                    let spd = Math.hypot(p.vx, p.vy) || 0.1;
                     if(spd > p.maxSpeed) { p.vx = (p.vx/spd)*p.maxSpeed; p.vy = (p.vy/spd)*p.maxSpeed; }
                 }
                 p.x += p.vx; p.y += p.vy; p.life--;
@@ -804,7 +829,6 @@
                 }
 
                 let target = p.owner === fighter1 ? fighter2 : fighter1;
-                // 공중의 적은 투사체를 피할 수 있음 (메테오 제외)
                 if (target.z > 0 && p.type !== 'meteor') continue; 
 
                 if (Math.hypot(target.x - p.x, target.y - p.y) < target.radius + p.radius) {
@@ -847,7 +871,7 @@
                     battleCtx.restore();
                 } else if (v.type === 'vortex') {
                     battleCtx.save(); battleCtx.globalAlpha = Math.max(0, v.alpha);
-                    battleCtx.beginPath(); battleCtx.arc(v.x, v.y, v.maxRadius - v.radius, 0, Math.PI*2);
+                    battleCtx.beginPath(); battleCtx.arc(v.x, v.y, Math.max(0, v.maxRadius - v.radius), 0, Math.PI*2);
                     battleCtx.strokeStyle = v.color; battleCtx.lineWidth = 5; battleCtx.stroke();
                     battleCtx.restore();
                 } else if (v.type === 'push_wave') {
@@ -860,7 +884,6 @@
         }
 
         function drawFighter(f) {
-            // 바닥 그림자 (공중에 뜰 시)
             if (f.z > 0) {
                 battleCtx.fillStyle = 'rgba(0,0,0,0.4)';
                 battleCtx.beginPath(); 
@@ -868,9 +891,8 @@
                 battleCtx.fill();
             }
 
-            // 시각적 3D 위치 반영 변수
             const drawY = f.y - f.z;
-            const drawRadius = f.radius * (1 + f.z * 0.005); // 공중으로 갈수록 커짐
+            const drawRadius = f.radius * (1 + f.z * 0.005); 
 
             if (f.history.length > 1 && f.z === 0) {
                 battleCtx.lineCap = 'round'; battleCtx.lineJoin = 'round';
@@ -905,7 +927,6 @@
             
             if (!battlePaused) {
                 if (battleSpeed === 0.5) {
-                    // 0.5배속: 프레임을 절반만 업데이트
                     if (battleFrameCount % 2 === 0) updatePhysics(w, h);
                 } else {
                     for (let s = 0; s < battleSpeed; s++) {
@@ -919,11 +940,11 @@
             drawVisualEffects();
 
             projectiles.forEach(p => {
-                battleCtx.beginPath(); battleCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                battleCtx.beginPath(); battleCtx.arc(p.x, p.y, Math.max(0.1, p.radius), 0, Math.PI * 2);
                 battleCtx.fillStyle = p.color; battleCtx.fill();
                 if(p.type === 'mine') { battleCtx.strokeStyle = '#fff'; battleCtx.lineWidth = 2; battleCtx.stroke(); }
                 if(p.type === 'meteor') {
-                    battleCtx.beginPath(); battleCtx.arc(p.x - p.vx*1.5, p.y - p.vy*1.5, p.radius*0.6, 0, Math.PI*2);
+                    battleCtx.beginPath(); battleCtx.arc(p.x - p.vx*1.5, p.y - p.vy*1.5, Math.max(0.1, p.radius*0.6), 0, Math.PI*2);
                     battleCtx.fillStyle = 'rgba(255,255,255,0.5)'; battleCtx.fill();
                 }
             });
@@ -936,7 +957,7 @@
                 } else if (p.shape === 'square') {
                     battleCtx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
                 } else {
-                    battleCtx.beginPath(); battleCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2); battleCtx.fill(); 
+                    battleCtx.beginPath(); battleCtx.arc(p.x, p.y, Math.max(0.1, p.size), 0, Math.PI * 2); battleCtx.fill(); 
                 }
                 battleCtx.restore();
             });
@@ -972,7 +993,6 @@
         
         document.getElementById('rematchBattleBtn').addEventListener('click', () => {
             if (currentBlueUniv && currentRedUniv) {
-                // 재경기 시 이전 스킬 그대로 전달
                 start2DBattle(currentBlueUniv, currentRedUniv, fighter1.skills, fighter2.skills);
             }
         });
