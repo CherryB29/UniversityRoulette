@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>대학 룰렛</title>
+    <title> 대학 룰렛</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
 
@@ -170,6 +170,19 @@
             </div>
         </div>
 
+        <div class="p-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-sky-50 shrink-0">
+            <div class="flex items-center justify-between">
+                <div>
+                    <span class="text-sm font-bold text-slate-900 flex items-center gap-1.5">⚙️ 동적 카메라</span>
+                    <p class="text-[10px] text-slate-500 mt-0.5 leading-tight">전투 중 카메라가 두 전투원을 부드럽게 추적</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="dynamicCameraToggle" class="sr-only peer">
+                    <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500 shadow-inner"></div>
+                </label>
+            </div>
+        </div>
+
         <div class="p-3 border-b border-slate-100 bg-slate-50 shrink-0">
             <div class="relative">
                 <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -227,6 +240,7 @@
         const colors = ['#f8fafc', '#f1f5f9', '#e2e8f0']; 
 
         let isBattleMode = false;
+        let isDynamicCamera = false;
         
         function loadData() {
             try {
@@ -242,6 +256,10 @@
                 if (savedBattle !== null) {
                     isBattleMode = savedBattle === 'true';
                 }
+                const savedDynamicCamera = localStorage.getItem('univ_roulette_dynamicCamera');
+                if (savedDynamicCamera !== null) {
+                    isDynamicCamera = savedDynamicCamera === 'true';
+                }
             } catch (e) { console.error('Local storage load error', e); }
         }
 
@@ -251,6 +269,16 @@
         }
         function saveBattleMode() {
             localStorage.setItem('univ_roulette_battle', isBattleMode);
+        }
+        function saveDynamicCamera() {
+            localStorage.setItem('univ_roulette_dynamicCamera', isDynamicCamera);
+        }
+        function loadSavedBattleSpeed() {
+            const v = parseFloat(localStorage.getItem('univ_roulette_battleSpeed'));
+            return [0.5, 1, 2, 4].includes(v) ? v : 1;
+        }
+        function saveBattleSpeed() {
+            localStorage.setItem('univ_roulette_battleSpeed', battleSpeed);
         }
 
         loadData();
@@ -269,6 +297,7 @@
         const searchInput = document.getElementById('searchInput'), sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebarOverlay'), wheelContainer = document.getElementById('wheelContainer');
         const battleToggle = document.getElementById('battleToggle');
+        const dynamicCameraToggle = document.getElementById('dynamicCameraToggle');
         const battleStatusBanner = document.getElementById('battleStatusBanner'), battleStatusText = document.getElementById('battleStatusText');
         const mainRouletteView = document.getElementById('mainRouletteView'), battleArenaView = document.getElementById('battleArenaView');
         
@@ -282,6 +311,7 @@
         const ctx = canvas.getContext('2d');
         
         battleToggle.checked = isBattleMode;
+        dynamicCameraToggle.checked = isDynamicCamera;
         if(isBattleMode) {
             battleStatusBanner.classList.remove('hidden');
             battleStatusText.textContent = "1차 선발: 블루 코너 추첨 중..."; spinBtnText.textContent = "블루 코너(1차) 추첨하기";
@@ -289,9 +319,12 @@
 
         function resizeCanvas() {
             const size = canvas.parentElement.clientWidth;
+            if (!size) return; // 컨테이너가 숨겨진 상태(0px)일 때는 스킵하여 잘못된 렌더링 방지
             const dpr = window.devicePixelRatio || 1;
             canvas.width = size * dpr; canvas.height = size * dpr;
-            ctx.scale(dpr, dpr); drawWheel();
+            // scale()은 누적되므로 setTransform으로 항상 절대 배율을 지정해 반복 호출에도 안전하게 함
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            drawWheel();
         }
 
         function drawWheel(angleOffset = currentAngle) {
@@ -456,22 +489,28 @@
         // ==========================================
         const battleCanvas = document.getElementById('battleCanvas'), battleCtx = battleCanvas.getContext('2d');
         let battleAnimationFrame = null, fighter1, fighter2;
-        let battleParticles = [], projectiles = [], damageTexts = [], visualEffects = [];
-        let battlePaused = false, battleSpeed = 1, battleFrameCount = 0;
+        let battleParticles = [], projectiles = [], damageTexts = [], visualEffects = [], structures = [];
+        let battlePaused = false, battleSpeed = loadSavedBattleSpeed(), battleFrameCount = 0;
+        let camera = { x: 0, y: 0, zoom: 1 };
 
         const pauseBattleBtn = document.getElementById('pauseBattleBtn');
         const speedBattleBtn = document.getElementById('speedBattleBtn');
 
         const SKILLS = [
-            { id: 'dash', name: '초고속 돌진' }, { id: 'laser', name: '플라즈마 레이저' },
-            { id: 'shield', name: '절대 방어막' }, { id: 'meteor', name: '메테오 스트라이크' },
-            { id: 'blackhole', name: '블랙홀 흡수' }, { id: 'nova', name: '노바 폭발' },
-            { id: 'gatling', name: '개틀링 건' }, { id: 'heal', name: '자가 치유' },
-            { id: 'blink', name: '순간 점멸' }, { id: 'mine', name: '지뢰 매설' },
-            { id: 'tornado', name: '허리케인' }, { id: 'freeze', name: '시간 정지' },
-            { id: 'gigant', name: '거대화' }, { id: 'homing', name: '유도 미사일' },
-            { id: 'earthquake', name: '대지진' }, { id: 'shotgun', name: '산탄 발사' },
-            { id: 'jump', name: '공중 도약' }, { id: 'push', name: '강력 밀치기' }
+            { id: 'dash', name: '돌진' }, { id: 'laser', name: '레이저' },
+            { id: 'shield', name: '방어' }, { id: 'meteor', name: '운석' },
+            { id: 'blackhole', name: '블랙홀' }, { id: 'nova', name: '폭발' },
+            { id: 'gatling', name: '연사' }, { id: 'heal', name: '회복' },
+            { id: 'blink', name: '점멸' }, { id: 'mine', name: '지뢰' },
+            { id: 'tornado', name: '회오리' }, { id: 'freeze', name: '정지' },
+            { id: 'gigant', name: '거대' }, { id: 'homing', name: '유도' },
+            { id: 'earthquake', name: '지진' }, { id: 'shotgun', name: '산탄' },
+            { id: 'jump', name: '점프' }, { id: 'push', name: '밀치기' },
+            { id: 'wall', name: '장벽' }, { id: 'fly', name: '비행' },
+            { id: 'stealth', name: '은신' }, { id: 'reflect', name: '반사' },
+            { id: 'slow', name: '감속' }, { id: 'spin', name: '스핀' },
+            { id: 'shockwave', name: '충격파' }, { id: 'totem', name: '토템' },
+            { id: 'teleport', name: '순간이동' }, { id: 'beam', name: '광선' }
         ];
 
         function initBattleFighter(univ, isBlue, width, height, customSkills = null) {
@@ -497,6 +536,7 @@
                 maxHp: 4000, hp: 4000, isBlue: isBlue,
                 skills: mySkills, cooldown: 0, shield: 0,
                 history: [], frozen: 0, gigant: 0,
+                flying: 0, stealth: 0, reflect: 0, slowed: 0,
                 state: 'IDLE', stateTimer: 0
             };
         }
@@ -505,9 +545,9 @@
             mainRouletteView.classList.add('hidden'); battleArenaView.classList.remove('hidden');
             battleResultOverlay.classList.add('hidden'); battleResultOverlay.classList.remove('flex');
 
-            battlePaused = false; battleSpeed = 1; battleFrameCount = 0;
+            battlePaused = false; battleFrameCount = 0;
             pauseBattleBtn.textContent = "⏸ 일시정지";
-            speedBattleBtn.textContent = "⚡ 1.0x";
+            speedBattleBtn.textContent = `⚡ ${battleSpeed}x`;
 
             blueTeamName.textContent = univBlue.name; redTeamName.textContent = univRed.name;
             const rect = battleCanvas.parentElement.getBoundingClientRect();
@@ -518,7 +558,8 @@
             fighter1 = initBattleFighter(univBlue, true, battleCanvas.width, battleCanvas.height, blueSkills);
             fighter2 = initBattleFighter(univRed, false, battleCanvas.width, battleCanvas.height, redSkills);
 
-            battleParticles = []; projectiles = []; damageTexts = []; visualEffects = [];
+            battleParticles = []; projectiles = []; damageTexts = []; visualEffects = []; structures = [];
+            camera = { x: battleCanvas.width / 2, y: battleCanvas.height / 2, zoom: 1 };
             blueHpBar.style.width = '100%'; blueHpTrail.style.width = '100%';
             redHpBar.style.width = '100%'; redHpTrail.style.width = '100%';
 
@@ -540,6 +581,7 @@
             else if(battleSpeed === 4) battleSpeed = 0.5; // 슬로우 모션
             else battleSpeed = 1;
             speedBattleBtn.textContent = `⚡ ${battleSpeed}x`;
+            saveBattleSpeed();
         });
 
         function updateHpUI() {
@@ -593,6 +635,18 @@
             });
         }
 
+        function applyDamage(defender, attacker, dmg) {
+            if (defender.stealth > 0) dmg = Math.floor(dmg * 0.3); // 은신 중 피해 감소
+            if (defender.shield > 0) { const b = Math.min(defender.shield, dmg); dmg -= b; defender.shield -= b; }
+            if (defender.reflect > 0) { // 반사: 다음 피해를 공격자에게 되돌림
+                defender.reflect = 0;
+                attacker.hp -= dmg;
+                createDamageText(attacker.x, attacker.y, `반사! -${dmg}`, defender.colorLight, 18);
+                return;
+            }
+            defender.hp -= dmg;
+        }
+
         function applySkill(caster, target) {
             if (caster.frozen > 0 || caster.z > 0) return; 
             if (caster.cooldown > 0) caster.cooldown--;
@@ -616,11 +670,11 @@
                     case 'meteor': shootProjectile(caster, target, 'meteor'); break;
                     case 'blackhole':
                         target.vx += (caster.x - target.x) * 0.15; target.vy += (caster.y - target.y) * 0.15;
-                        target.hp -= 80; createParticles(target.x, target.y, caster.colorDark, 40, 8);
+                        applyDamage(target, caster, 80); createParticles(target.x, target.y, caster.colorDark, 40, 8);
                         addVisualEffect('vortex', caster.x, caster.y, caster.colorDark, 100);
                         break;
                     case 'nova':
-                        target.hp -= 150; createParticles(caster.x, caster.y, c, 60, 25, 2);
+                        applyDamage(target, caster, 150); createParticles(caster.x, caster.y, c, 60, 25, 2);
                         addVisualEffect('ring', caster.x, caster.y, c, 250); triggerScreenShake(true);
                         break;
                     case 'gatling':
@@ -652,7 +706,7 @@
                         shootProjectile(caster, target, 'homing', -0.6); shootProjectile(caster, target, 'homing', 0); shootProjectile(caster, target, 'homing', 0.6);
                         break;
                     case 'earthquake':
-                        target.hp -= 150; target.vx *= 0.1; target.vy *= 0.1;
+                        applyDamage(target, caster, 150); target.vx *= 0.1; target.vy *= 0.1;
                         triggerScreenShake(true); createParticles(target.x, target.y + 20, caster.colorDark, 50, 12, 1.5, 'square');
                         break;
                     case 'shotgun':
@@ -666,12 +720,72 @@
                         if (dist < 250) {
                             const pAng = Math.atan2(target.y - caster.y, target.x - caster.x);
                             target.vx += Math.cos(pAng) * 45; target.vy += Math.sin(pAng) * 45;
-                            target.hp -= 120;
+                            applyDamage(target, caster, 120);
                             createDamageText(target.x, target.y, "-120", caster.colorLight, 20);
                             addVisualEffect('push_wave', caster.x, caster.y, caster.colorLight, 180, pAng);
                             triggerScreenShake();
                         }
                         break;
+                    case 'wall': {
+                        const angW = Math.atan2(target.y - caster.y, target.x - caster.x);
+                        const wx = caster.x + Math.cos(angW) * 90, wy = caster.y + Math.sin(angW) * 90;
+                        structures.push({ type: 'wall', x: wx, y: wy, radius: 34, hp: 300, maxHp: 300, owner: caster, life: 500, color: c });
+                        createParticles(wx, wy, c, 20);
+                        break;
+                    }
+                    case 'fly':
+                        caster.z = 70; caster.vz = 0; caster.flying = 100;
+                        createParticles(caster.x, caster.y, '#ffffff', 20);
+                        break;
+                    case 'stealth':
+                        caster.stealth = 110;
+                        createParticles(caster.x, caster.y, '#94a3b8', 20);
+                        break;
+                    case 'reflect':
+                        caster.reflect = 150;
+                        createParticles(caster.x, caster.y, c, 20);
+                        break;
+                    case 'slow':
+                        target.slowed = 120; target.vx *= 0.3; target.vy *= 0.3;
+                        createParticles(target.x, target.y, '#38bdf8', 20, 3, 1.5, 'square');
+                        break;
+                    case 'spin':
+                        if (dist < 160) {
+                            const spAng = Math.atan2(target.y - caster.y, target.x - caster.x);
+                            target.vx += Math.cos(spAng) * 30; target.vy += Math.sin(spAng) * 30;
+                            applyDamage(target, caster, 130);
+                            createDamageText(target.x, target.y, "-130", caster.colorLight, 20);
+                        }
+                        createParticles(caster.x, caster.y, c, 40, 20, 1.5);
+                        addVisualEffect('ring', caster.x, caster.y, c, 100); triggerScreenShake();
+                        break;
+                    case 'shockwave':
+                        if (dist < 300) {
+                            const swAng = Math.atan2(target.y - caster.y, target.x - caster.x);
+                            target.vx += Math.cos(swAng) * 30; target.vy += Math.sin(swAng) * 30;
+                            applyDamage(target, caster, 100);
+                            createDamageText(target.x, target.y, "-100", caster.colorLight, 20);
+                        }
+                        addVisualEffect('ring', caster.x, caster.y, c, 320); triggerScreenShake(true);
+                        break;
+                    case 'totem':
+                        structures.push({ type: 'totem', x: caster.x + (caster.isBlue ? 40 : -40), y: caster.y, hp: 250, owner: caster, timer: 60, life: 600, color: c });
+                        createParticles(caster.x, caster.y, c, 15);
+                        break;
+                    case 'teleport':
+                        createParticles(caster.x, caster.y, c, 25);
+                        caster.x = Math.random() * (battleCanvas.width - 100) + 50;
+                        caster.y = Math.random() * (battleCanvas.height - 100) + 50;
+                        createParticles(caster.x, caster.y, c, 25);
+                        break;
+                    case 'beam': {
+                        const angB = Math.atan2(target.y - caster.y, target.x - caster.x);
+                        applyDamage(target, caster, 90);
+                        createDamageText(target.x, target.y, "-90", c, 18);
+                        addVisualEffect('beam', caster.x, caster.y, c, dist, angB);
+                        triggerScreenShake();
+                        break;
+                    }
                 }
             }
         }
@@ -694,9 +808,14 @@
             }
 
             if (f.gigant > 0) { f.gigant--; if (f.gigant <= 0) f.radius = f.baseRadius; }
+            if (f.stealth > 0) f.stealth--;
+            if (f.reflect > 0) f.reflect--;
+            if (f.slowed > 0) f.slowed--;
             if (f.frozen > 0) { f.frozen--; return; } 
 
-            if (f.z > 0 || f.vz > 0) {
+            if (f.flying > 0) {
+                f.flying--; f.z = 70; f.vz = 0; // 비행 중에는 고도를 유지
+            } else if (f.z > 0 || f.vz > 0) {
                 f.z += f.vz; f.vz -= 1.2; 
                 if (f.z <= 0) {
                     f.z = 0; f.vz = 0; 
@@ -706,7 +825,7 @@
                     if (dist < 180 && opponent.z === 0) {
                         const ang = Math.atan2(opponent.y - f.y, opponent.x - f.x);
                         opponent.vx += Math.cos(ang) * 35; opponent.vy += Math.sin(ang) * 35;
-                        opponent.hp -= 250;
+                        applyDamage(opponent, f, 250);
                         createDamageText(opponent.x, opponent.y, "SMASH! -250", f.color, 24);
                     }
                 }
@@ -727,7 +846,8 @@
             }
 
             const zPenalty = f.z > 0 ? 0.5 : 1.0;
-            const speedAccel = (f.gigant > 0 ? 1.5 : 3.5) * zPenalty; 
+            const slowPenalty = f.slowed > 0 ? 0.4 : 1.0; // 감속 상태에서는 가속 저하
+            const speedAccel = (f.gigant > 0 ? 1.5 : 3.5) * zPenalty * slowPenalty; 
             const angle = Math.atan2(dy, dx);
 
             if (f.state === 'CHASE' || f.state === 'ATTACK') {
@@ -755,6 +875,21 @@
             else if (f.x > w - f.radius) { f.x = w - f.radius; f.vx = -Math.abs(f.vx) * 0.8; }
             if (f.y < f.radius) { f.y = f.radius; f.vy = Math.abs(f.vy) * 0.8; }
             else if (f.y > h - f.radius) { f.y = h - f.radius; f.vy = -Math.abs(f.vy) * 0.8; }
+
+            // 장벽 구조물과의 물리 충돌 (장벽 스킬)
+            if (f.z === 0) {
+                structures.forEach(st => {
+                    if (st.type !== 'wall') return;
+                    const wdx = f.x - st.x, wdy = f.y - st.y;
+                    const wdist = Math.hypot(wdx, wdy) || 0.1;
+                    const minDist = f.radius + st.radius;
+                    if (wdist < minDist) {
+                        const wAng = Math.atan2(wdy, wdx);
+                        f.x = st.x + Math.cos(wAng) * minDist; f.y = st.y + Math.sin(wAng) * minDist;
+                        f.vx *= -0.3; f.vy *= -0.3;
+                    }
+                });
+            }
         }
 
         function checkFighterCollision(f1, f2) {
@@ -783,10 +918,8 @@
                 let dmg2 = Math.floor(speed1 * 5) + 15;
                 if(f1.gigant > 0) dmg2 *= 2; if(f2.gigant > 0) dmg1 *= 2; 
 
-                if (f1.shield > 0) { let b = Math.min(f1.shield, dmg1); dmg1 -= b; f1.shield -= b; }
-                if (f2.shield > 0) { let b = Math.min(f2.shield, dmg2); dmg2 -= b; f2.shield -= b; }
-
-                f1.hp -= dmg1; f2.hp -= dmg2;
+                applyDamage(f1, f2, dmg1);
+                applyDamage(f2, f1, dmg2);
                 if(dmg1 > 10 || dmg2 > 10) {
                     createParticles((f1.x + f2.x)/2, (f1.y + f2.y)/2, '#ffffff', 15);
                     triggerScreenShake((speed1+speed2)>25);
@@ -799,6 +932,27 @@
             updateFighterAI(fighter2, fighter1, w, h);
             checkFighterCollision(fighter1, fighter2);
 
+            for (let i = structures.length - 1; i >= 0; i--) {
+                const st = structures[i];
+                st.life--;
+                if (st.type === 'totem') {
+                    st.timer--;
+                    if (st.timer <= 0) {
+                        st.timer = 90;
+                        const stTarget = st.owner === fighter1 ? fighter2 : fighter1;
+                        if (stTarget.z === 0) {
+                            const stAng = Math.atan2(stTarget.y - st.y, stTarget.x - st.x);
+                            projectiles.push({
+                                x: st.x, y: st.y, vx: Math.cos(stAng) * 18, vy: Math.sin(stAng) * 18,
+                                radius: 5, color: st.color, damage: 45, owner: st.owner, type: 'bullet',
+                                life: 100, penetrate: false, homing: false, maxSpeed: 18
+                            });
+                        }
+                    }
+                }
+                if (st.life <= 0 || st.hp <= 0) structures.splice(i, 1);
+            }
+
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 let p = projectiles[i];
                 if(p.type === 'mine') {
@@ -806,7 +960,7 @@
                     if(p.life <= 0) { projectiles.splice(i,1); continue; }
                     let target = p.owner === fighter1 ? fighter2 : fighter1;
                     if(target.z === 0 && Math.hypot(target.x - p.x, target.y - p.y) < target.radius + 40) {
-                        target.hp -= p.damage;
+                        applyDamage(target, p.owner, p.damage);
                         createParticles(p.x, p.y, p.color, 40, 15, 2);
                         addVisualEffect('ring', p.x, p.y, p.color, 120);
                         triggerScreenShake(true);
@@ -814,6 +968,20 @@
                     }
                     continue;
                 }
+
+                let blockedByWall = false;
+                for (let w2 = structures.length - 1; w2 >= 0; w2--) {
+                    const st = structures[w2];
+                    if (st.type !== 'wall' || p.owner === st.owner) continue;
+                    if (Math.hypot(p.x - st.x, p.y - st.y) < st.radius + (p.radius || 5)) {
+                        st.hp -= p.damage;
+                        createParticles(p.x, p.y, '#94a3b8', 10);
+                        blockedByWall = true;
+                        break;
+                    }
+                }
+                if (blockedByWall) { projectiles.splice(i, 1); continue; }
+
                 if (p.homing) {
                     let target = p.owner === fighter1 ? fighter2 : fighter1;
                     let pDx = target.x - p.x; let pDy = target.y - p.y;
@@ -832,9 +1000,7 @@
                 if (target.z > 0 && p.type !== 'meteor') continue; 
 
                 if (Math.hypot(target.x - p.x, target.y - p.y) < target.radius + p.radius) {
-                    let dmg = p.damage;
-                    if (target.shield > 0) { let b = Math.min(target.shield, dmg); dmg -= b; target.shield -= b; }
-                    target.hp -= dmg;
+                    applyDamage(target, p.owner, p.damage);
                     createParticles(p.x, p.y, p.color, 20, 10);
                     if(p.type === 'meteor') { triggerScreenShake(true); addVisualEffect('ring', p.x, p.y, p.color, 150); }
                     if(!p.penetrate) projectiles.splice(i, 1);
@@ -851,6 +1017,9 @@
                     if (v.alpha <= 0) visualEffects.splice(i, 1);
                 } else if (v.type === 'push_wave') {
                     v.radius += 12; v.alpha -= 0.05;
+                    if (v.alpha <= 0) visualEffects.splice(i, 1);
+                } else if (v.type === 'beam') {
+                    v.alpha -= 0.12;
                     if (v.alpha <= 0) visualEffects.splice(i, 1);
                 }
             }
@@ -878,6 +1047,30 @@
                     battleCtx.save(); battleCtx.globalAlpha = Math.max(0, v.alpha);
                     battleCtx.beginPath(); battleCtx.arc(v.x, v.y, v.radius, v.angle - 0.5, v.angle + 0.5);
                     battleCtx.strokeStyle = v.color; battleCtx.lineWidth = 20 * v.alpha; battleCtx.stroke();
+                    battleCtx.restore();
+                } else if (v.type === 'beam') {
+                    battleCtx.save(); battleCtx.globalAlpha = Math.max(0, v.alpha);
+                    battleCtx.beginPath(); battleCtx.moveTo(v.x, v.y);
+                    battleCtx.lineTo(v.x + Math.cos(v.angle) * v.maxRadius, v.y + Math.sin(v.angle) * v.maxRadius);
+                    battleCtx.strokeStyle = v.color; battleCtx.lineWidth = 6; battleCtx.stroke();
+                    battleCtx.restore();
+                }
+            });
+        }
+
+        function drawStructures() {
+            structures.forEach(st => {
+                if (st.type === 'wall') {
+                    battleCtx.save(); battleCtx.globalAlpha = Math.max(0.2, st.hp / st.maxHp);
+                    battleCtx.beginPath(); battleCtx.arc(st.x, st.y, st.radius, 0, Math.PI * 2);
+                    battleCtx.fillStyle = 'rgba(148,163,184,0.35)'; battleCtx.fill();
+                    battleCtx.lineWidth = 3; battleCtx.strokeStyle = st.color || '#94a3b8'; battleCtx.stroke();
+                    battleCtx.restore();
+                } else if (st.type === 'totem') {
+                    battleCtx.save();
+                    battleCtx.beginPath(); battleCtx.arc(st.x, st.y, 14, 0, Math.PI * 2);
+                    battleCtx.fillStyle = st.color; battleCtx.fill();
+                    battleCtx.lineWidth = 2; battleCtx.strokeStyle = '#ffffff'; battleCtx.stroke();
                     battleCtx.restore();
                 }
             });
@@ -909,11 +1102,23 @@
                 battleCtx.setLineDash([]);
             }
 
+            if (f.reflect > 0) {
+                battleCtx.beginPath();
+                battleCtx.setLineDash([4, 6]);
+                battleCtx.arc(f.x, drawY, drawRadius + 14, 0, Math.PI * 2);
+                battleCtx.strokeStyle = '#facc15'; battleCtx.lineWidth = 3; battleCtx.stroke();
+                battleCtx.setLineDash([]);
+            }
+
+            const stealthAlpha = f.stealth > 0 ? 0.35 : 1.0;
+            battleCtx.save(); battleCtx.globalAlpha = stealthAlpha;
+
             if (f.frozen > 0) battleCtx.fillStyle = '#bae6fd';
             else battleCtx.fillStyle = f.color;
 
             battleCtx.beginPath(); battleCtx.arc(f.x, drawY, drawRadius, 0, Math.PI * 2);
             battleCtx.fill(); battleCtx.lineWidth = 2; battleCtx.strokeStyle = '#ffffff'; battleCtx.stroke();
+            battleCtx.restore();
 
             battleCtx.fillStyle = '#ffffff'; battleCtx.textAlign = 'center'; battleCtx.textBaseline = 'top'; battleCtx.font = `bold 12px Pretendard`;
             const textWidth = battleCtx.measureText(f.name).width;
@@ -937,7 +1142,29 @@
             }
 
             battleCtx.clearRect(0, 0, w, h);
+
+            // 동적 카메라: 두 전투원의 중앙으로 부드럽게 이동하며 줌 조절
+            const midX = (fighter1.x + fighter2.x) / 2;
+            const midY = (fighter1.y + fighter2.y) / 2;
+            let targetX = w / 2, targetY = h / 2, targetZoom = 1;
+            if (isDynamicCamera) {
+                const fighterDist = Math.hypot(fighter1.x - fighter2.x, fighter1.y - fighter2.y);
+                const padding = 220;
+                targetZoom = Math.min(w / (fighterDist + padding), h / (fighterDist + padding), 1.4);
+                targetZoom = Math.max(targetZoom, 0.55);
+                targetX = midX; targetY = midY;
+            }
+            camera.x += (targetX - camera.x) * 0.06;
+            camera.y += (targetY - camera.y) * 0.06;
+            camera.zoom += (targetZoom - camera.zoom) * 0.06;
+
+            battleCtx.save();
+            battleCtx.translate(w / 2, h / 2);
+            battleCtx.scale(camera.zoom, camera.zoom);
+            battleCtx.translate(-camera.x, -camera.y);
+
             drawVisualEffects();
+            drawStructures();
 
             projectiles.forEach(p => {
                 battleCtx.beginPath(); battleCtx.arc(p.x, p.y, Math.max(0.1, p.radius), 0, Math.PI * 2);
@@ -963,6 +1190,7 @@
             });
 
             drawFighter(fighter1); drawFighter(fighter2);
+            battleCtx.restore();
             updateHpUI();
 
             if (fighter1.hp <= 0 || fighter2.hp <= 0) {
@@ -982,10 +1210,13 @@
             if (battleAnimationFrame) cancelAnimationFrame(battleAnimationFrame);
             battleArenaView.classList.add('hidden'); mainRouletteView.classList.remove('hidden');
             selectedFighters = [];
+            camera = { x: 0, y: 0, zoom: 1 }; // 카메라 상태 초기화
             if (isBattleMode) {
                 battleStatusText.textContent = "1차 선발: 블루 코너 추첨 중..."; spinBtnText.textContent = "블루 코너(1차) 추첨하기";
             } else spinBtnText.textContent = "추첨 시작!";
             setControlsDisabled(false);
+            // 전투 중 숨겨져 있던 룰렛 캔버스가 잘못된 크기로 남아있을 수 있으므로 다시 계산
+            resizeCanvas();
         }
 
         document.getElementById('exitBattleEarlyBtn').addEventListener('click', forceExitBattle);
@@ -1006,6 +1237,11 @@
             } else {
                 battleStatusBanner.classList.add('hidden'); spinBtnText.textContent = "추첨 시작!";
             }
+        });
+
+        dynamicCameraToggle.addEventListener('change', (e) => {
+            isDynamicCamera = e.target.checked;
+            saveDynamicCamera();
         });
 
         function renderSidebar() {
