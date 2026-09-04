@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title> 대학 룰렛</title>
+    <title>대학 룰렛</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
 
@@ -43,6 +43,16 @@
         .hp-layer-bg { background-color: #1e293b; }
         .hp-layer-trail { transition: width 0.7s ease-out; }
         .hp-layer-main { transition: width 0.1s ease-out; }
+        .battle-reticle {
+            position: absolute; width: 150px; height: 150px; border: 2px solid rgba(148, 163, 184, 0.22);
+            border-radius: 50%; pointer-events: none; z-index: 1;
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.08), inset 0 0 30px rgba(56, 189, 248, 0.04);
+        }
+        .battle-reticle::before, .battle-reticle::after {
+            content: ''; position: absolute; background: rgba(148, 163, 184, 0.22);
+        }
+        .battle-reticle::before { width: 1px; height: 180px; left: 50%; top: -15px; }
+        .battle-reticle::after { width: 180px; height: 1px; top: 50%; left: -15px; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col bg-slate-50 relative">
@@ -112,6 +122,7 @@
 
         <div class="flex-1 my-2 md:my-3 relative w-full max-w-5xl mx-auto rounded-xl overflow-hidden border-2 border-slate-800 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-700 via-slate-900 to-black shadow-[inset_0_0_50px_rgba(0,0,0,0.8)] flex items-center justify-center">
             <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIiAvPjwvc3ZnPg==')] opacity-50"></div>
+            <div class="battle-reticle"></div>
             <canvas id="battleCanvas" class="w-full h-full block relative z-10"></canvas>
             
             <div id="battleResultOverlay" class="absolute inset-0 bg-black/80 hidden flex-col items-center justify-center backdrop-blur-sm z-30">
@@ -492,6 +503,7 @@
         let battleParticles = [], projectiles = [], damageTexts = [], visualEffects = [], structures = [];
         let battlePaused = false, battleSpeed = loadSavedBattleSpeed(), battleFrameCount = 0;
         let camera = { x: 0, y: 0, zoom: 1 };
+        let cinematicSlowFrames = 0, cinematicSlowCooldown = 0;
 
         const pauseBattleBtn = document.getElementById('pauseBattleBtn');
         const speedBattleBtn = document.getElementById('speedBattleBtn');
@@ -537,6 +549,7 @@
                 skills: mySkills, cooldown: 0, shield: 0,
                 history: [], frozen: 0, gigant: 0,
                 flying: 0, stealth: 0, reflect: 0, slowed: 0,
+                frozenBy: null, spinOrbit: 0, spinAngle: 0,
                 state: 'IDLE', stateTimer: 0
             };
         }
@@ -560,6 +573,7 @@
 
             battleParticles = []; projectiles = []; damageTexts = []; visualEffects = []; structures = [];
             camera = { x: battleCanvas.width / 2, y: battleCanvas.height / 2, zoom: 1 };
+            cinematicSlowFrames = 0; cinematicSlowCooldown = 0;
             blueHpBar.style.width = '100%'; blueHpTrail.style.width = '100%';
             redHpBar.style.width = '100%'; redHpTrail.style.width = '100%';
 
@@ -645,6 +659,10 @@
                 return;
             }
             defender.hp -= dmg;
+            if (isDynamicCamera && cinematicSlowCooldown <= 0 && (dmg >= 300 || defender.hp <= 0)) {
+                cinematicSlowFrames = defender.hp <= 0 ? 30 : 18;
+                cinematicSlowCooldown = 120;
+            }
         }
 
         function applySkill(caster, target) {
@@ -695,7 +713,7 @@
                         break;
                     case 'tornado': shootProjectile(caster, target, 'tornado'); break;
                     case 'freeze':
-                        target.frozen = 80; target.vx = 0; target.vy = 0;
+                        target.frozen = 80; target.frozenBy = caster; target.vx = 0; target.vy = 0;
                         createParticles(target.x, target.y, '#bae6fd', 30, 5, 1.5, 'square');
                         break;
                     case 'gigant':
@@ -750,14 +768,10 @@
                         createParticles(target.x, target.y, '#38bdf8', 20, 3, 1.5, 'square');
                         break;
                     case 'spin':
-                        if (dist < 160) {
-                            const spAng = Math.atan2(target.y - caster.y, target.x - caster.x);
-                            target.vx += Math.cos(spAng) * 30; target.vy += Math.sin(spAng) * 30;
-                            applyDamage(target, caster, 130);
-                            createDamageText(target.x, target.y, "-130", caster.colorLight, 20);
-                        }
+                        caster.spinOrbit = 24;
+                        caster.spinAngle = Math.atan2(caster.y - target.y, caster.x - target.x);
                         createParticles(caster.x, caster.y, c, 40, 20, 1.5);
-                        addVisualEffect('ring', caster.x, caster.y, c, 100); triggerScreenShake();
+                        addVisualEffect('ring', target.x, target.y, c, 100); triggerScreenShake();
                         break;
                     case 'shockwave':
                         if (dist < 300) {
@@ -811,7 +825,32 @@
             if (f.stealth > 0) f.stealth--;
             if (f.reflect > 0) f.reflect--;
             if (f.slowed > 0) f.slowed--;
-            if (f.frozen > 0) { f.frozen--; return; } 
+            if (f.frozen > 0) {
+                f.frozen--;
+                if (f.frozen <= 0) f.frozenBy = null;
+                return;
+            }
+
+            if (f.spinOrbit > 0) {
+                f.spinOrbit--;
+                f.spinAngle += 0.75;
+                const orbitRadius = f.radius + opponent.radius + 35;
+                f.x = opponent.x + Math.cos(f.spinAngle) * orbitRadius;
+                f.y = opponent.y + Math.sin(f.spinAngle) * orbitRadius;
+                f.vx = 0; f.vy = 0;
+                if (f.spinOrbit <= 0) {
+                    const impactAngle = Math.atan2(opponent.y - f.y, opponent.x - f.x);
+                    f.x = opponent.x - Math.cos(impactAngle) * (f.radius + opponent.radius - 2);
+                    f.y = opponent.y - Math.sin(impactAngle) * (f.radius + opponent.radius - 2);
+                    f.vx = Math.cos(impactAngle) * 20; f.vy = Math.sin(impactAngle) * 20;
+                    applyDamage(opponent, f, 500);
+                    createDamageText(opponent.x, opponent.y, "SPIN CRASH! -500", f.colorLight, 26);
+                    createParticles(opponent.x, opponent.y, f.colorLight, 55, 18, 2);
+                    addVisualEffect('ring', opponent.x, opponent.y, f.colorLight, 180);
+                    triggerScreenShake(true);
+                }
+                return;
+            }
 
             if (f.flying > 0) {
                 f.flying--; f.z = 70; f.vz = 0; // 비행 중에는 고도를 유지
@@ -918,8 +957,8 @@
                 let dmg2 = Math.floor(speed1 * 5) + 15;
                 if(f1.gigant > 0) dmg2 *= 2; if(f2.gigant > 0) dmg1 *= 2; 
 
-                applyDamage(f1, f2, dmg1);
-                applyDamage(f2, f1, dmg2);
+                if (!(f2.frozen > 0 && f2.frozenBy === f1)) applyDamage(f1, f2, dmg1);
+                if (!(f1.frozen > 0 && f1.frozenBy === f2)) applyDamage(f2, f1, dmg2);
                 if(dmg1 > 10 || dmg2 > 10) {
                     createParticles((f1.x + f2.x)/2, (f1.y + f2.y)/2, '#ffffff', 15);
                     triggerScreenShake((speed1+speed2)>25);
@@ -928,6 +967,8 @@
         }
 
         function updatePhysics(w, h) {
+            if (cinematicSlowFrames > 0) cinematicSlowFrames--;
+            if (cinematicSlowCooldown > 0) cinematicSlowCooldown--;
             updateFighterAI(fighter1, fighter2, w, h); 
             updateFighterAI(fighter2, fighter1, w, h);
             checkFighterCollision(fighter1, fighter2);
@@ -1131,7 +1172,7 @@
             battleFrameCount++;
             
             if (!battlePaused) {
-                if (battleSpeed === 0.5) {
+                if (battleSpeed === 0.5 || cinematicSlowFrames > 0) {
                     if (battleFrameCount % 2 === 0) updatePhysics(w, h);
                 } else {
                     for (let s = 0; s < battleSpeed; s++) {
