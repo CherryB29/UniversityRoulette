@@ -594,7 +594,7 @@
         const speedBattleValue = document.getElementById('speedBattleValue');
 
         const SKILLS = [
-            { id: 'dash', name: '돌진' }, { id: 'laser', name: '레이저' },
+            { id: 'dash', name: '돌진' },
             { id: 'shield', name: '방어' }, { id: 'meteor', name: '운석' },
             { id: 'blackhole', name: '블랙홀' }, { id: 'nova', name: '폭발' },
             { id: 'gatling', name: '연사' }, { id: 'heal', name: '회복' },
@@ -613,6 +613,14 @@
             { id: 'freezeZone', name: '빙결지대' }, { id: 'meteorRain', name: '운석폭우' },
             { id: 'timeAccel', name: '시간가속' }
         ];
+        const skillRetreatTendency = {
+            dash: 5, shield: 35, meteor: 45, blackhole: 20, nova: 10, gatling: 55, heal: 80,
+            blink: 45, mine: 70, tornado: 30, freeze: 50, gigant: 5, homing: 50, earthquake: 15,
+            shotgun: 20, jump: 25, push: 10, wall: 75, fly: 60, stealth: 85, reflect: 65,
+            slow: 55, spin: 5, shockwave: 20, totem: 90, teleport: 65, beam: 40, summon: 60,
+            timeStop: 45, lifesteal: 15, freezeZone: 70, meteorRain: 50, timeAccel: 35
+        };
+        SKILLS.forEach(skill => { skill.retreat = skillRetreatTendency[skill.id] ?? 50; });
 
         function renderCustomSkillSelectors(container, colorClass) {
             container.innerHTML = '';
@@ -626,7 +634,7 @@
         }
 
         function getCustomSkills(container) {
-            return [...container.querySelectorAll('select')].map(select => SKILLS.find(skill => skill.id === select.value));
+            return [...container.querySelectorAll('select')].map(select => SKILLS.find(skill => skill.id === select.value)).filter(Boolean);
         }
 
         function getCustomBattleSettings(hpInput, cooldownInput, attackInput, moveInput, aiInput) {
@@ -686,12 +694,12 @@
                 colorLight: isBlue ? '#60a5fa' : '#f87171',
                 colorDark: isBlue ? '#1e3a8a' : '#7f1d1d',
                 maxHp: battleSettings?.maxHp || 4000, hp: battleSettings?.maxHp || 4000, isBlue: isBlue,
-                skills: mySkills, cooldown: 0, shield: 0,
+                skills: mySkills, retreatTendency: mySkills.reduce((sum, skill) => sum + (skill.retreat || 50), 0) / Math.max(1, mySkills.length), cooldown: 0, shield: 0,
                 cooldownRate: 1 + (battleSettings?.cooldownAcceleration || 0) / 100,
                 attackMultiplier: battleSettings ? battleSettings.attackMultiplier : 1,
                 moveMultiplier: battleSettings ? battleSettings.moveMultiplier : 1,
                 aiEnabled: battleSettings?.aiEnabled !== false,
-                history: [], frozen: 0, gigant: 0,
+                history: [], frozen: 0, stunned: 0, gigant: 0,
                 flying: 0, stealth: 0, reflect: 0, slowed: 0, timeStopped: 0,
                 timeAccel: 0, lifesteal: 0,
                 blackholeTimer: 0, blackholeSource: null, blackholeDamageTimer: 0,
@@ -789,11 +797,11 @@
             let speed = 15, radius = 8, dmg = 50, life = 100, penetrate = false, homing = false;
             let c = caster.colorLight;
 
-            if(type === 'laser') { speed = 35; radius = 5; dmg = 80; }
             if(type === 'bullet') { speed = 22; radius = 4; dmg = 35; }
+            if(type === 'shotgun') { speed = 26; radius = 6; dmg = 70; }
             if(type === 'meteor') { speed = 8; radius = 25; dmg = 350; c = caster.color; }
-            if(type === 'tornado') { speed = 2.5; radius = 30; dmg = 8; penetrate = true; life = 200; homing = true; }
-            if(type === 'homing') { speed = 12; radius = 6; dmg = 70; homing = true; }
+            if(type === 'tornado') { speed = 2.5; radius = 30; dmg = 8; penetrate = true; life = 600; homing = true; }
+            if(type === 'homing') { speed = 12; radius = 6; dmg = 70; life = 150; homing = true; }
 
             projectiles.push({
                 x: caster.x, y: caster.y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
@@ -862,7 +870,6 @@
                         createParticles(caster.x, caster.y, c, 28, 18, 1.4);
                         caster.vx = Math.cos(angD) * 40; caster.vy = Math.sin(angD) * 40;
                         break;
-                    case 'laser': shootProjectile(caster, target, 'laser'); break;
                     case 'shield': caster.shield = 400; createParticles(caster.x, caster.y, c, 20); break;
                     case 'meteor': shootProjectile(caster, target, 'meteor'); break;
                     case 'blackhole':
@@ -907,14 +914,14 @@
                         createParticles(caster.x, caster.y, c, 40, 15); triggerScreenShake();
                         break;
                     case 'homing':
-                        shootProjectile(caster, target, 'homing', -0.6); shootProjectile(caster, target, 'homing', 0); shootProjectile(caster, target, 'homing', 0.6);
+                        for (let i = -2; i <= 2; i++) shootProjectile(caster, target, 'homing', i * 0.35);
                         break;
                     case 'earthquake':
                         applyDamage(target, caster, 150); target.vx *= 0.1; target.vy *= 0.1;
                         triggerScreenShake(true); createParticles(target.x, target.y + 20, caster.colorDark, 50, 12, 1.5, 'square');
                         break;
                     case 'shotgun':
-                        for(let i=-3; i<=3; i++) shootProjectile(caster, target, 'bullet', i*0.25);
+                        for(let i=-5; i<=5; i++) shootProjectile(caster, target, 'shotgun', i*0.16);
                         break;
                     case 'jump':
                         caster.vz = 20; // Z축 도약
@@ -990,10 +997,14 @@
                         break;
                     case 'beam': {
                         const angB = Math.atan2(target.y - caster.y, target.x - caster.x);
-                        applyDamage(target, caster, 90);
-                        createDamageText(target.x, target.y, "-90", c, 18);
-                        addVisualEffect('beam', caster.x, caster.y, c, dist, angB);
-                        triggerScreenShake();
+                        applyDamage(target, caster, 180);
+                        target.vx += Math.cos(angB) * 18; target.vy += Math.sin(angB) * 18;
+                        target.stunned = 22;
+                        createDamageText(target.x, target.y, "-180", c, 22);
+                        addVisualEffect('beam', caster.x, caster.y, c, Math.min(dist, 520), angB);
+                        addVisualEffect('ring', target.x, target.y, c, 90);
+                        createParticles(target.x, target.y, c, 28, 12, 1.4);
+                        triggerScreenShake(true);
                         break;
                     }
                     case 'timeStop':
@@ -1051,6 +1062,11 @@
             if (f.stealth > 0) f.stealth--;
             if (f.reflect > 0) f.reflect--;
             if (f.slowed > 0) f.slowed--;
+            if (f.stunned > 0) {
+                f.stunned--;
+                f.vx *= 0.2; f.vy *= 0.2;
+                return;
+            }
             if (f.timeStopped > 0) { f.timeStopped--; f.vx = 0; f.vy = 0; return; }
             if (f.timeAccel > 0) f.timeAccel--;
             if (f.frozen > 0) {
@@ -1137,10 +1153,12 @@
             if (f.stateTimer <= 0) {
                 f.stateTimer = (Math.random() * 30 + 15) / (f.timeAccel > 0 ? 1.8 : 1);
                 const r = Math.random();
-                if (dist < 120) {
-                    if (r < 0.4) f.state = 'EVADE'; else if (r < 0.7) f.state = 'ATTACK'; else f.state = 'RETREAT';
+                const retreatBias = f.retreatTendency / 100;
+                const retreatDistance = 80 + retreatBias * 300;
+                if (dist < retreatDistance) {
+                    if (r < 0.1 + retreatBias * 0.8) f.state = 'RETREAT'; else if (r < 0.45 + retreatBias * 0.35) f.state = 'EVADE'; else f.state = 'ATTACK';
                 } else {
-                    if (r < 0.6) f.state = 'CHASE'; else f.state = 'RANGED';
+                    if (r < 0.78 - retreatBias * 0.65) f.state = 'CHASE'; else f.state = 'RANGED';
                 }
             }
 
@@ -1149,13 +1167,15 @@
             const speedAccel = (f.gigant > 0 ? 1.5 : 3.5) * zPenalty * slowPenalty * (f.timeAccel > 0 ? 1.6 : 1) * f.moveMultiplier;
             const angle = Math.atan2(dy, dx);
 
+            const retreatBias = f.retreatTendency / 100;
             if (f.state === 'CHASE' || f.state === 'ATTACK') {
-                f.vx += Math.cos(angle) * speedAccel; f.vy += Math.sin(angle) * speedAccel;
+                const approachStrength = 1.2 - retreatBias * 0.65;
+                f.vx += Math.cos(angle) * speedAccel * approachStrength; f.vy += Math.sin(angle) * speedAccel * approachStrength;
             } else if (f.state === 'RETREAT') {
-                f.vx -= Math.cos(angle) * speedAccel; f.vy -= Math.sin(angle) * speedAccel;
+                f.vx -= Math.cos(angle) * speedAccel * (1 + retreatBias * 2.5); f.vy -= Math.sin(angle) * speedAccel * (1 + retreatBias * 2.5);
             } else if (f.state === 'EVADE') {
                 const evadeAngle = angle + (Math.PI / 2) * (Math.random() > 0.5 ? 1 : -1);
-                f.vx += Math.cos(evadeAngle) * speedAccel * 1.5; f.vy += Math.sin(evadeAngle) * speedAccel * 1.5;
+                f.vx += Math.cos(evadeAngle) * speedAccel * (1.2 + retreatBias * 2.5); f.vy += Math.sin(evadeAngle) * speedAccel * (1.2 + retreatBias * 2.5);
             }
 
             applySkill(f, opponent);
@@ -1267,7 +1287,7 @@
                     const targets = [fighter1, fighter2];
                     targets.forEach(target => {
                         if (Math.hypot(target.x - st.x, target.y - st.y) <= st.radius) {
-                            target.slowed = Math.max(target.slowed, 12);
+                            target.slowed = Math.max(target.slowed, 24);
                             if (st.timer <= 0 && target !== st.owner) {
                                 applyDamage(target, st.owner, 18);
                                 st.timer = 20;
