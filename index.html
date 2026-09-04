@@ -43,21 +43,7 @@
         .hp-layer-bg { background-color: #1e293b; }
         .hp-layer-trail { transition: width 0.7s ease-out; }
         .hp-layer-main { transition: width 0.1s ease-out; }
-        .battlefield-grid {
-            position: absolute; inset: 0; pointer-events: none; z-index: 1; opacity: 0.8;
-            background-image:
-                linear-gradient(rgba(125, 211, 252, 0.15) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(125, 211, 252, 0.15) 1px, transparent 1px),
-                linear-gradient(rgba(125, 211, 252, 0.3) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(125, 211, 252, 0.3) 1px, transparent 1px);
-            background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
-        }
-        .battlefield-grid::before, .battlefield-grid::after {
-            content: ''; position: absolute; background: rgba(186, 230, 253, 0.42);
-            box-shadow: 0 0 10px rgba(56, 189, 248, 0.24);
-        }
-        .battlefield-grid::before { width: 1px; height: 100%; left: 50%; }
-        .battlefield-grid::after { width: 100%; height: 1px; top: 50%; }
+        .battlefield-grid { display: none; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col bg-slate-50 relative">
@@ -135,7 +121,7 @@
                 
                 <div class="flex flex-col sm:flex-row gap-3">
                     <button id="rematchBattleBtn" class="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-lg transition-all shadow-[0_0_20px_rgba(79,70,229,0.4)]">
-                        🔄 재경기 (스킬 유지)
+                        재경기
                     </button>
                     <button id="returnFromBattleBtn" class="px-8 py-4 bg-slate-100 hover:bg-white text-slate-900 rounded-xl font-bold text-lg transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)]">
                         격투 종료 및 복귀
@@ -198,6 +184,44 @@
             </div>
         </div>
 
+        <div class="p-4 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50 shrink-0">
+            <div class="flex items-center justify-between">
+                <div>
+                    <span class="text-sm font-bold text-slate-900 flex items-center gap-1.5">🎮 커스텀 배틀</span>
+                    <p class="text-[10px] text-slate-500 mt-0.5 leading-tight">이름과 스킬을 직접 정해 바로 대결</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="customBattleToggle" class="sr-only peer">
+                    <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 shadow-inner"></div>
+                </label>
+            </div>
+            <div id="customBattlePanel" class="hidden mt-3 space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <input id="customBlueName" value="P1" maxlength="18" class="min-w-0 px-2.5 py-2 rounded-lg border border-blue-200 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="블루 이름">
+                    <input id="customRedName" value="P2" maxlength="18" class="min-w-0 px-2.5 py-2 rounded-lg border border-red-200 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-red-400" placeholder="레드 이름">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="rounded-lg border border-blue-100 bg-blue-50/70 p-2 space-y-1.5">
+                        <label class="flex items-center justify-between text-[10px] font-bold text-blue-900"><span>체력</span><output id="customBlueHpValue">4000</output></label>
+                        <input id="customBlueHp" type="number" min="100" max="10000" step="100" value="4000" class="w-full px-2 py-1 rounded border border-blue-200 text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <label class="flex items-center justify-between text-[10px] font-bold text-blue-900"><span>쿨타임 가속</span><output id="customBlueCooldownValue">0%</output></label>
+                        <input id="customBlueCooldown" type="range" min="-100" max="400" step="10" value="0" class="w-full accent-blue-600">
+                    </div>
+                    <div class="rounded-lg border border-red-100 bg-red-50/70 p-2 space-y-1.5">
+                        <label class="flex items-center justify-between text-[10px] font-bold text-red-900"><span>체력</span><output id="customRedHpValue">4000</output></label>
+                        <input id="customRedHp" type="number" min="100" max="10000" step="100" value="4000" class="w-full px-2 py-1 rounded border border-red-200 text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-red-400">
+                        <label class="flex items-center justify-between text-[10px] font-bold text-red-900"><span>쿨타임 가속</span><output id="customRedCooldownValue">0%</output></label>
+                        <input id="customRedCooldown" type="range" min="-100" max="400" step="10" value="0" class="w-full accent-red-600">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div id="customBlueSkills" class="space-y-1.5"></div>
+                    <div id="customRedSkills" class="space-y-1.5"></div>
+                </div>
+                <button id="startCustomBattleBtn" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors">커스텀 대결 시작</button>
+            </div>
+        </div>
+
         <div class="p-3 border-b border-slate-100 bg-slate-50 shrink-0">
             <div class="relative">
                 <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -256,6 +280,7 @@
 
         let isBattleMode = false;
         let isDynamicCamera = false;
+        let isCustomBattleMode = false;
         
         function loadData() {
             try {
@@ -301,6 +326,8 @@
         let selectedFighters = []; 
         let currentBlueUniv = null;
         let currentRedUniv = null;
+        let currentBlueBattleSettings = null;
+        let currentRedBattleSettings = null;
         
         let currentAngle = 0, angularVelocity = 0, isSpinning = false, isDragging = false;
         let lastTouchAngle = 0, animationFrameId = null, searchQuery = '';
@@ -313,6 +340,21 @@
         const sidebarOverlay = document.getElementById('sidebarOverlay'), wheelContainer = document.getElementById('wheelContainer');
         const battleToggle = document.getElementById('battleToggle');
         const dynamicCameraToggle = document.getElementById('dynamicCameraToggle');
+        const customBattleToggle = document.getElementById('customBattleToggle');
+        const customBattlePanel = document.getElementById('customBattlePanel');
+        const customBlueName = document.getElementById('customBlueName');
+        const customRedName = document.getElementById('customRedName');
+        const customBlueHp = document.getElementById('customBlueHp');
+        const customRedHp = document.getElementById('customRedHp');
+        const customBlueCooldown = document.getElementById('customBlueCooldown');
+        const customRedCooldown = document.getElementById('customRedCooldown');
+        const customBlueHpValue = document.getElementById('customBlueHpValue');
+        const customRedHpValue = document.getElementById('customRedHpValue');
+        const customBlueCooldownValue = document.getElementById('customBlueCooldownValue');
+        const customRedCooldownValue = document.getElementById('customRedCooldownValue');
+        const customBlueSkills = document.getElementById('customBlueSkills');
+        const customRedSkills = document.getElementById('customRedSkills');
+        const startCustomBattleBtn = document.getElementById('startCustomBattleBtn');
         const battleStatusBanner = document.getElementById('battleStatusBanner'), battleStatusText = document.getElementById('battleStatusText');
         const mainRouletteView = document.getElementById('mainRouletteView'), battleArenaView = document.getElementById('battleArenaView');
         
@@ -495,6 +537,8 @@
             if (isBattleMode && selectedFighters.length === 2) {
                 currentBlueUniv = selectedFighters[0];
                 currentRedUniv = selectedFighters[1];
+                currentBlueBattleSettings = null;
+                currentRedBattleSettings = null;
                 start2DBattle(currentBlueUniv, currentRedUniv);
             }
         });
@@ -525,39 +569,90 @@
             { id: 'stealth', name: '은신' }, { id: 'reflect', name: '반사' },
             { id: 'slow', name: '감속' }, { id: 'spin', name: '스핀' },
             { id: 'shockwave', name: '충격파' }, { id: 'totem', name: '토템' },
-            { id: 'teleport', name: '순간이동' }, { id: 'beam', name: '광선' }
+            { id: 'teleport', name: '순간이동' }, { id: 'beam', name: '광선' },
+            { id: 'summon', name: '소환' }, { id: 'timeStop', name: '시간정지' },
+            { id: 'lifesteal', name: '흡혈' },
+            { id: 'freezeZone', name: '빙결지대' }, { id: 'meteorRain', name: '운석폭우' },
+            { id: 'timeAccel', name: '시간가속' }
         ];
 
-        function initBattleFighter(univ, isBlue, width, height, customSkills = null) {
+        function renderCustomSkillSelectors(container, colorClass) {
+            container.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const select = document.createElement('select');
+                select.className = `w-full px-2 py-1.5 rounded-lg border ${colorClass} text-[11px] font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400`;
+                select.dataset.skillSlot = i;
+                select.innerHTML = SKILLS.map(skill => `<option value="${skill.id}">${skill.name}</option>`).join('');
+                container.appendChild(select);
+            }
+        }
+
+        function getCustomSkills(container) {
+            return [...container.querySelectorAll('select')].map(select => SKILLS.find(skill => skill.id === select.value));
+        }
+
+        function getCustomBattleSettings(hpInput, cooldownInput) {
+            const hp = Math.min(10000, Math.max(100, Number(hpInput.value) || 4000));
+            const cooldownAcceleration = Math.min(400, Math.max(-100, Number(cooldownInput.value) || 0));
+            return { maxHp: hp, cooldownAcceleration: cooldownAcceleration };
+        }
+
+        function startCustomBattle() {
+            const blueName = customBlueName.value.trim() || 'P1';
+            const redName = customRedName.value.trim() || 'P2';
+            currentBlueBattleSettings = getCustomBattleSettings(customBlueHp, customBlueCooldown);
+            currentRedBattleSettings = getCustomBattleSettings(customRedHp, customRedCooldown);
+            currentBlueUniv = { name: blueName };
+            currentRedUniv = { name: redName };
+            selectedFighters = [];
+            closeSidebar();
+            start2DBattle(currentBlueUniv, currentRedUniv, getCustomSkills(customBlueSkills), getCustomSkills(customRedSkills), currentBlueBattleSettings, currentRedBattleSettings);
+        }
+
+        renderCustomSkillSelectors(customBlueSkills, 'border-blue-200');
+        renderCustomSkillSelectors(customRedSkills, 'border-red-200');
+
+        function updateCustomBattleOutputs() {
+            customBlueHpValue.value = Math.min(10000, Math.max(100, Number(customBlueHp.value) || 4000));
+            customRedHpValue.value = Math.min(10000, Math.max(100, Number(customRedHp.value) || 4000));
+            customBlueCooldownValue.value = `${customBlueCooldown.value}%`;
+            customRedCooldownValue.value = `${customRedCooldown.value}%`;
+        }
+
+        [customBlueHp, customRedHp, customBlueCooldown, customRedCooldown].forEach(input => {
+            input.addEventListener('input', updateCustomBattleOutputs);
+        });
+        updateCustomBattleOutputs();
+
+        function initBattleFighter(univ, isBlue, width, height, customSkills = null, battleSettings = null) {
             let mySkills = [];
             if (customSkills) {
                 mySkills = customSkills;
             } else {
-                let tempSkills = [...SKILLS];
                 for(let i=0; i<3; i++) {
-                    let idx = Math.floor(Math.random() * tempSkills.length);
-                    mySkills.push(tempSkills[idx]);
-                    tempSkills.splice(idx, 1);
+                    mySkills.push(SKILLS[Math.floor(Math.random() * SKILLS.length)]);
                 }
             }
 
             return {
                 name: univ.name, x: isBlue ? width * 0.15 : width * 0.85, y: height * 0.5,
                 vx: 0, vy: 0, z: 0, vz: 0,
-                radius: 16, baseRadius: 16,
+                radius: 11, baseRadius: 11,
                 color: isBlue ? '#3b82f6' : '#ef4444',
                 colorLight: isBlue ? '#60a5fa' : '#f87171',
                 colorDark: isBlue ? '#1e3a8a' : '#7f1d1d',
-                maxHp: 4000, hp: 4000, isBlue: isBlue,
+                maxHp: battleSettings?.maxHp || 4000, hp: battleSettings?.maxHp || 4000, isBlue: isBlue,
                 skills: mySkills, cooldown: 0, shield: 0,
+                cooldownRate: 1 + (battleSettings?.cooldownAcceleration || 0) / 100,
                 history: [], frozen: 0, gigant: 0,
-                flying: 0, stealth: 0, reflect: 0, slowed: 0,
+                flying: 0, stealth: 0, reflect: 0, slowed: 0, timeStopped: 0,
+                timeAccel: 0, lifesteal: 0,
                 frozenBy: null, spinOrbit: 0, spinAngle: 0,
                 state: 'IDLE', stateTimer: 0
             };
         }
 
-        function start2DBattle(univBlue, univRed, blueSkills = null, redSkills = null) {
+        function start2DBattle(univBlue, univRed, blueSkills = null, redSkills = null, blueSettings = null, redSettings = null) {
             mainRouletteView.classList.add('hidden'); battleArenaView.classList.remove('hidden');
             battleResultOverlay.classList.add('hidden'); battleResultOverlay.classList.remove('flex');
 
@@ -571,8 +666,8 @@
             battleCanvas.width = rect.width || window.innerWidth * 0.9; 
             battleCanvas.height = rect.height || window.innerHeight * 0.6;
 
-            fighter1 = initBattleFighter(univBlue, true, battleCanvas.width, battleCanvas.height, blueSkills);
-            fighter2 = initBattleFighter(univRed, false, battleCanvas.width, battleCanvas.height, redSkills);
+            fighter1 = initBattleFighter(univBlue, true, battleCanvas.width, battleCanvas.height, blueSkills, blueSettings);
+            fighter2 = initBattleFighter(univRed, false, battleCanvas.width, battleCanvas.height, redSkills, redSettings);
 
             battleParticles = []; projectiles = []; damageTexts = []; visualEffects = []; structures = [];
             camera = { x: battleCanvas.width / 2, y: battleCanvas.height / 2, zoom: 1 };
@@ -647,7 +742,8 @@
             projectiles.push({
                 x: caster.x, y: caster.y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
                 radius: radius, color: c, damage: dmg, owner: caster, type: type, life: life,
-                penetrate: penetrate, homing: homing, maxSpeed: speed
+                penetrate: penetrate, homing: homing, maxSpeed: speed,
+                hitTargets: []
             });
         }
 
@@ -661,11 +757,14 @@
                 return;
             }
             defender.hp -= dmg;
+            if (attacker.lifesteal > 0 && dmg > 0) {
+                attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.ceil(dmg * 0.35));
+            }
         }
 
         function applySkill(caster, target) {
             if (caster.frozen > 0 || caster.z > 0) return; 
-            if (caster.cooldown > 0) caster.cooldown--;
+            if (caster.cooldown > 0) caster.cooldown -= caster.cooldownRate * (caster.timeAccel > 0 ? 2 : 1);
             
             if (caster.cooldown <= 0 && Math.random() < 0.035) {
                 caster.cooldown = Math.floor(Math.random() * 50 + 40); 
@@ -678,8 +777,9 @@
                 switch(skill.id) {
                     case 'dash':
                         let angD = Math.atan2(target.y - caster.y, target.x - caster.x);
+                        addVisualEffect('dash', caster.x, caster.y, c, 150, angD);
+                        createParticles(caster.x, caster.y, c, 28, 18, 1.4);
                         caster.vx = Math.cos(angD) * 40; caster.vy = Math.sin(angD) * 40;
-                        createParticles(caster.x, caster.y, c, 15);
                         break;
                     case 'laser': shootProjectile(caster, target, 'laser'); break;
                     case 'shield': caster.shield = 400; createParticles(caster.x, caster.y, c, 20); break;
@@ -701,10 +801,13 @@
                         createParticles(caster.x, caster.y, '#10b981', 30, 5, 2, 'cross');
                         break;
                     case 'blink':
+                        const blinkStartX = caster.x, blinkStartY = caster.y;
+                        addVisualEffect('blink', blinkStartX, blinkStartY, c, 80);
                         createParticles(caster.x, caster.y, c, 20);
                         caster.x = target.x + (target.x > battleCanvas.width/2 ? -80 : 80);
                         caster.y = target.y + (target.y > battleCanvas.height/2 ? -80 : 80);
-                        createParticles(caster.x, caster.y, c, 20);
+                        createParticles(caster.x, caster.y, c, 38, 12, 1.4);
+                        addVisualEffect('blink', caster.x, caster.y, c, 100);
                         break;
                     case 'mine':
                         projectiles.push({ x: caster.x, y: caster.y, vx: 0, vy: 0, radius: 12, color: baseC, damage: 300, owner: caster, type: 'mine', life: 300 });
@@ -730,7 +833,8 @@
                         break;
                     case 'jump':
                         caster.vz = 20; // Z축 도약
-                        createParticles(caster.x, caster.y, '#ffffff', 20, 5);
+                        createParticles(caster.x, caster.y, '#ffffff', 30, 8, 1.3);
+                        addVisualEffect('jump', caster.x, caster.y, '#ffffff', 100);
                         break;
                     case 'push':
                         if (dist < 250) {
@@ -751,7 +855,8 @@
                     }
                     case 'fly':
                         caster.z = 70; caster.vz = 0; caster.flying = 100;
-                        createParticles(caster.x, caster.y, '#ffffff', 20);
+                        createParticles(caster.x, caster.y, '#ffffff', 32, 10, 1.4);
+                        addVisualEffect('fly', caster.x, caster.y, '#bae6fd', 70);
                         break;
                     case 'stealth':
                         caster.stealth = 110;
@@ -784,11 +889,19 @@
                         structures.push({ type: 'totem', x: caster.x + (caster.isBlue ? 40 : -40), y: caster.y, hp: 250, owner: caster, timer: 60, life: 600, color: c });
                         createParticles(caster.x, caster.y, c, 15);
                         break;
+                    case 'summon':
+                        structures.push({ type: 'summon', x: caster.x, y: caster.y, hp: 220, maxHp: 220, owner: caster, timer: 20, life: 520, color: c });
+                        createParticles(caster.x, caster.y, c, 30, 10, 1.5);
+                        addVisualEffect('ring', caster.x, caster.y, c, 90);
+                        break;
                     case 'teleport':
+                        const teleportStartX = caster.x, teleportStartY = caster.y;
+                        addVisualEffect('teleport', teleportStartX, teleportStartY, c, 90);
                         createParticles(caster.x, caster.y, c, 25);
                         caster.x = Math.random() * (battleCanvas.width - 100) + 50;
                         caster.y = Math.random() * (battleCanvas.height - 100) + 50;
-                        createParticles(caster.x, caster.y, c, 25);
+                        createParticles(caster.x, caster.y, c, 45, 14, 1.5);
+                        addVisualEffect('teleport', caster.x, caster.y, c, 110);
                         break;
                     case 'beam': {
                         const angB = Math.atan2(target.y - caster.y, target.x - caster.x);
@@ -798,6 +911,36 @@
                         triggerScreenShake();
                         break;
                     }
+                    case 'timeStop':
+                        target.timeStopped = 110;
+                        target.vx = 0; target.vy = 0;
+                        createParticles(target.x, target.y, '#e0f2fe', 35, 4, 1.5, 'square');
+                        addVisualEffect('ring', target.x, target.y, '#bae6fd', 120);
+                        break;
+                    case 'lifesteal':
+                        caster.lifesteal = 180;
+                        createParticles(caster.x, caster.y, '#be123c', 25, 6, 1.4);
+                        break;
+                    case 'freezeZone':
+                        structures.push({ type: 'freezeZone', x: target.x, y: target.y, radius: 90, hp: 1, owner: caster, timer: 20, life: 260, color: '#67e8f9' });
+                        createParticles(target.x, target.y, '#a5f3fc', 35, 8, 1.5, 'square');
+                        break;
+                    case 'meteorRain':
+                        for (let i = 0; i < 6; i++) {
+                            projectiles.push({
+                                x: target.x + (Math.random() - 0.5) * 260, y: target.y - 260 - Math.random() * 180,
+                                vx: 0, vy: 8 + Math.random() * 3, radius: 20, color: '#f97316',
+                                damage: 220, owner: caster, type: 'meteorRain', life: 90 + i * 4,
+                                penetrate: false, homing: false, maxSpeed: 0, hitTargets: []
+                            });
+                        }
+                        triggerScreenShake(true);
+                        break;
+                    case 'timeAccel':
+                        caster.timeAccel = 180;
+                        createParticles(caster.x, caster.y, '#fef08a', 30, 8, 1.5);
+                        addVisualEffect('ring', caster.x, caster.y, '#fde047', 100);
+                        break;
                 }
             }
         }
@@ -823,6 +966,8 @@
             if (f.stealth > 0) f.stealth--;
             if (f.reflect > 0) f.reflect--;
             if (f.slowed > 0) f.slowed--;
+            if (f.timeStopped > 0) { f.timeStopped--; f.vx = 0; f.vy = 0; return; }
+            if (f.timeAccel > 0) f.timeAccel--;
             if (f.frozen > 0) {
                 f.frozen--;
                 if (f.frozen <= 0) f.frozenBy = null;
@@ -873,7 +1018,7 @@
             const dist = Math.hypot(dx, dy) || 0.1; // NaN 보정
 
             if (f.stateTimer <= 0) {
-                f.stateTimer = Math.random() * 30 + 15; 
+                f.stateTimer = (Math.random() * 30 + 15) / (f.timeAccel > 0 ? 1.8 : 1);
                 const r = Math.random();
                 if (dist < 120) {
                     if (r < 0.4) f.state = 'EVADE'; else if (r < 0.7) f.state = 'ATTACK'; else f.state = 'RETREAT';
@@ -884,7 +1029,7 @@
 
             const zPenalty = f.z > 0 ? 0.5 : 1.0;
             const slowPenalty = f.slowed > 0 ? 0.4 : 1.0; // 감속 상태에서는 가속 저하
-            const speedAccel = (f.gigant > 0 ? 1.5 : 3.5) * zPenalty * slowPenalty; 
+            const speedAccel = (f.gigant > 0 ? 1.5 : 3.5) * zPenalty * slowPenalty * (f.timeAccel > 0 ? 1.6 : 1);
             const angle = Math.atan2(dy, dx);
 
             if (f.state === 'CHASE' || f.state === 'ATTACK') {
@@ -987,11 +1132,54 @@
                         }
                     }
                 }
+                if (st.type === 'summon') {
+                    st.timer--;
+                    if (st.timer <= 0) {
+                        st.timer = 70;
+                        const stTarget = st.owner === fighter1 ? fighter2 : fighter1;
+                        const stAng = Math.atan2(stTarget.y - st.y, stTarget.x - st.x);
+                        projectiles.push({
+                            x: st.x, y: st.y, vx: Math.cos(stAng) * 14, vy: Math.sin(stAng) * 14,
+                            radius: 4, color: st.color, damage: 35, owner: st.owner, type: 'bullet',
+                            life: 100, penetrate: false, homing: false, maxSpeed: 14
+                        });
+                    }
+                }
+                if (st.type === 'freezeZone') {
+                    st.timer--;
+                    const targets = [fighter1, fighter2];
+                    targets.forEach(target => {
+                        if (Math.hypot(target.x - st.x, target.y - st.y) <= st.radius) {
+                            target.slowed = Math.max(target.slowed, 12);
+                            if (st.timer <= 0 && target !== st.owner) {
+                                applyDamage(target, st.owner, 18);
+                                st.timer = 20;
+                            }
+                        }
+                    });
+                }
                 if (st.life <= 0 || st.hp <= 0) structures.splice(i, 1);
             }
 
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 let p = projectiles[i];
+                if (p.type === 'meteorRain') {
+                    p.life--;
+                    p.x += p.vx; p.y += p.vy;
+                    const rainTarget = p.owner === fighter1 ? fighter2 : fighter1;
+                    if (p.y >= rainTarget.y - 20 || p.life <= 0) {
+                        [fighter1, fighter2].forEach(target => {
+                            if (target !== p.owner && Math.hypot(target.x - p.x, target.y - p.y) < 70) {
+                                applyDamage(target, p.owner, p.damage);
+                            }
+                        });
+                        createParticles(p.x, p.y, '#fb923c', 35, 14, 1.8);
+                        addVisualEffect('ring', p.x, p.y, '#fb923c', 100);
+                        triggerScreenShake();
+                        projectiles.splice(i, 1);
+                    }
+                    continue;
+                }
                 if(p.type === 'mine') {
                     p.life--;
                     if(p.life <= 0) { projectiles.splice(i,1); continue; }
@@ -1058,6 +1246,10 @@
                 } else if (v.type === 'beam') {
                     v.alpha -= 0.12;
                     if (v.alpha <= 0) visualEffects.splice(i, 1);
+                } else if (v.type === 'dash' || v.type === 'blink' || v.type === 'jump' || v.type === 'fly' || v.type === 'teleport') {
+                    v.radius += v.type === 'dash' ? 10 : 6;
+                    v.alpha -= v.type === 'fly' ? 0.025 : 0.06;
+                    if (v.alpha <= 0) visualEffects.splice(i, 1);
                 }
             }
 
@@ -1091,8 +1283,51 @@
                     battleCtx.lineTo(v.x + Math.cos(v.angle) * v.maxRadius, v.y + Math.sin(v.angle) * v.maxRadius);
                     battleCtx.strokeStyle = v.color; battleCtx.lineWidth = 6; battleCtx.stroke();
                     battleCtx.restore();
+                } else if (v.type === 'dash') {
+                    battleCtx.save(); battleCtx.globalAlpha = Math.max(0, v.alpha);
+                    battleCtx.translate(v.x, v.y); battleCtx.rotate(v.angle);
+                    battleCtx.strokeStyle = v.color; battleCtx.lineCap = 'round';
+                    for (let line = 0; line < 5; line++) {
+                        battleCtx.lineWidth = 3 + line * 0.8;
+                        battleCtx.beginPath(); battleCtx.moveTo(-v.radius * (0.45 + line * 0.12), (line - 2) * 7);
+                        battleCtx.lineTo(v.radius * (0.15 + line * 0.12), (line - 2) * 7); battleCtx.stroke();
+                    }
+                    battleCtx.restore();
+                } else if (v.type === 'blink' || v.type === 'jump' || v.type === 'teleport') {
+                    battleCtx.save(); battleCtx.globalAlpha = Math.max(0, v.alpha);
+                    battleCtx.beginPath(); battleCtx.arc(v.x, v.y, v.radius, 0, Math.PI * 2);
+                    battleCtx.strokeStyle = v.color; battleCtx.lineWidth = 5 * v.alpha; battleCtx.stroke();
+                    battleCtx.beginPath(); battleCtx.arc(v.x, v.y, v.radius * 0.55, 0, Math.PI * 2);
+                    battleCtx.strokeStyle = '#ffffff'; battleCtx.lineWidth = 2; battleCtx.stroke();
+                    battleCtx.restore();
+                } else if (v.type === 'fly') {
+                    battleCtx.save(); battleCtx.globalAlpha = Math.max(0, v.alpha);
+                    battleCtx.setLineDash([8, 8]);
+                    battleCtx.beginPath(); battleCtx.arc(v.x, v.y, v.radius, 0, Math.PI * 2);
+                    battleCtx.strokeStyle = v.color; battleCtx.lineWidth = 4; battleCtx.stroke();
+                    battleCtx.setLineDash([]); battleCtx.restore();
                 }
             });
+        }
+
+        function drawBattlefieldGround(w, h) {
+            const halfWidth = w / camera.zoom;
+            const halfHeight = h / camera.zoom;
+            const left = camera.x - halfWidth;
+            const right = camera.x + halfWidth;
+            const top = camera.y - halfHeight;
+            const bottom = camera.y + halfHeight;
+            battleCtx.fillStyle = '#0b1220';
+            battleCtx.fillRect(left, top, right - left, bottom - top);
+            battleCtx.lineWidth = 1;
+            for (let x = Math.floor(left / 48) * 48; x <= right; x += 48) {
+                battleCtx.strokeStyle = x % 240 === 0 ? 'rgba(125,211,252,0.28)' : 'rgba(125,211,252,0.1)';
+                battleCtx.beginPath(); battleCtx.moveTo(x, top); battleCtx.lineTo(x, bottom); battleCtx.stroke();
+            }
+            for (let y = Math.floor(top / 48) * 48; y <= bottom; y += 48) {
+                battleCtx.strokeStyle = y % 240 === 0 ? 'rgba(125,211,252,0.28)' : 'rgba(125,211,252,0.1)';
+                battleCtx.beginPath(); battleCtx.moveTo(left, y); battleCtx.lineTo(right, y); battleCtx.stroke();
+            }
         }
 
         function drawStructures() {
@@ -1109,6 +1344,23 @@
                     battleCtx.fillStyle = st.color; battleCtx.fill();
                     battleCtx.lineWidth = 2; battleCtx.strokeStyle = '#ffffff'; battleCtx.stroke();
                     battleCtx.restore();
+                } else if (st.type === 'summon') {
+                    battleCtx.save(); battleCtx.globalAlpha = Math.max(0.25, st.hp / st.maxHp);
+                    battleCtx.beginPath(); battleCtx.arc(st.x, st.y, 9, 0, Math.PI * 2);
+                    battleCtx.fillStyle = st.color; battleCtx.fill();
+                    battleCtx.lineWidth = 2; battleCtx.strokeStyle = '#ffffff'; battleCtx.stroke();
+                    battleCtx.beginPath(); battleCtx.arc(st.x, st.y, 14, 0, Math.PI * 2);
+                    battleCtx.strokeStyle = `${st.color}88`; battleCtx.stroke();
+                    battleCtx.restore();
+                } else if (st.type === 'freezeZone') {
+                    battleCtx.save();
+                    battleCtx.globalAlpha = 0.22;
+                    battleCtx.fillStyle = st.color;
+                    battleCtx.beginPath(); battleCtx.arc(st.x, st.y, st.radius, 0, Math.PI * 2); battleCtx.fill();
+                    battleCtx.globalAlpha = 0.8;
+                    battleCtx.setLineDash([8, 6]);
+                    battleCtx.lineWidth = 3; battleCtx.strokeStyle = st.color; battleCtx.stroke();
+                    battleCtx.setLineDash([]); battleCtx.restore();
                 }
             });
         }
@@ -1200,6 +1452,7 @@
             battleCtx.scale(camera.zoom, camera.zoom);
             battleCtx.translate(-camera.x, -camera.y);
 
+            drawBattlefieldGround(w, h);
             drawVisualEffects();
             drawStructures();
 
@@ -1220,7 +1473,12 @@
                 battleCtx.beginPath(); battleCtx.moveTo(tailX, tailY); battleCtx.lineTo(p.x, p.y); battleCtx.stroke();
                 battleCtx.shadowColor = p.color; battleCtx.shadowBlur = radius * 2.5;
 
-                if (p.type === 'tornado') {
+                if (p.type === 'meteorRain') {
+                    const meteor = battleCtx.createRadialGradient(p.x - radius * 0.3, p.y - radius * 0.3, 2, p.x, p.y, radius);
+                    meteor.addColorStop(0, '#fff7ed'); meteor.addColorStop(0.35, '#fb923c'); meteor.addColorStop(1, '#c2410c');
+                    battleCtx.fillStyle = meteor;
+                    battleCtx.beginPath(); battleCtx.arc(p.x, p.y, radius, 0, Math.PI * 2); battleCtx.fill();
+                } else if (p.type === 'tornado') {
                     battleCtx.strokeStyle = p.color; battleCtx.lineWidth = 3;
                     for (let ring = 0; ring < 3; ring++) {
                         battleCtx.beginPath();
@@ -1295,7 +1553,7 @@
         
         document.getElementById('rematchBattleBtn').addEventListener('click', () => {
             if (currentBlueUniv && currentRedUniv) {
-                start2DBattle(currentBlueUniv, currentRedUniv, fighter1.skills, fighter2.skills);
+                start2DBattle(currentBlueUniv, currentRedUniv, fighter1.skills, fighter2.skills, currentBlueBattleSettings, currentRedBattleSettings);
             }
         });
 
@@ -1314,6 +1572,18 @@
             isDynamicCamera = e.target.checked;
             saveDynamicCamera();
         });
+
+        customBattleToggle.addEventListener('change', (e) => {
+            isCustomBattleMode = e.target.checked;
+            customBattlePanel.classList.toggle('hidden', !isCustomBattleMode);
+            if (isCustomBattleMode) {
+                battleToggle.checked = false;
+                isBattleMode = false;
+                battleStatusBanner.classList.add('hidden');
+                spinBtnText.textContent = '추첨 시작!';
+            }
+        });
+        startCustomBattleBtn.addEventListener('click', startCustomBattle);
 
         function renderSidebar() {
             listContainer.innerHTML = '';
