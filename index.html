@@ -32,12 +32,12 @@
         .shake-screen { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both; }
         .shake-screen-heavy { animation: shakeHeavy 0.4s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake {
-            10%, 90% { transform: translate3d(-3px, 2px, 0); } 20%, 80% { transform: translate3d(4px, -3px, 0); }
-            30%, 50%, 70% { transform: translate3d(-5px, 4px, 0); } 40%, 60% { transform: translate3d(5px, -4px, 0); }
+            10%, 90% { transform: translate3d(calc(-3px * var(--shake-scale, 1)), calc(2px * var(--shake-scale, 1)), 0); } 20%, 80% { transform: translate3d(calc(4px * var(--shake-scale, 1)), calc(-3px * var(--shake-scale, 1)), 0); }
+            30%, 50%, 70% { transform: translate3d(calc(-5px * var(--shake-scale, 1)), calc(4px * var(--shake-scale, 1)), 0); } 40%, 60% { transform: translate3d(calc(5px * var(--shake-scale, 1)), calc(-4px * var(--shake-scale, 1)), 0); }
         }
         @keyframes shakeHeavy {
-            10%, 90% { transform: translate3d(-10px, 6px, 0); } 20%, 80% { transform: translate3d(12px, -8px, 0); }
-            30%, 50%, 70% { transform: translate3d(-14px, 10px, 0); } 40%, 60% { transform: translate3d(14px, -10px, 0); }
+            10%, 90% { transform: translate3d(calc(-10px * var(--shake-scale, 1)), calc(6px * var(--shake-scale, 1)), 0); } 20%, 80% { transform: translate3d(calc(12px * var(--shake-scale, 1)), calc(-8px * var(--shake-scale, 1)), 0); }
+            30%, 50%, 70% { transform: translate3d(calc(-14px * var(--shake-scale, 1)), calc(10px * var(--shake-scale, 1)), 0); } 40%, 60% { transform: translate3d(calc(14px * var(--shake-scale, 1)), calc(-10px * var(--shake-scale, 1)), 0); }
         }
 
         .hp-layer-bg { background-color: #1e293b; }
@@ -130,16 +130,22 @@
             </div>
         </div>
 
-        <div class="w-full max-w-5xl mx-auto flex justify-between items-center px-2 py-1 z-10">
-            <div class="flex gap-2">
-                <button id="pauseBattleBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-xs transition-colors border border-slate-700">
-                    ⏸ 일시정지
+        <div class="w-full max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-2 px-2 py-1 z-10">
+            <div class="flex flex-wrap gap-1.5">
+                <button id="pauseBattleBtn" aria-label="일시정지" title="일시정지" class="w-8 h-8 shrink-0 flex items-center justify-center bg-slate-800/90 hover:bg-slate-700 text-slate-200 rounded-lg font-medium transition-colors border border-slate-700">
+                    <svg id="pauseBattleIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>
                 </button>
-                <button id="speedBattleBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-xs transition-colors border border-slate-700 w-[68px]">
-                    ⚡ 1.0x
-                </button>
+                <label class="flex items-center gap-1.5 px-2.5 h-8 bg-slate-800/90 text-slate-300 rounded-lg border border-slate-700 cursor-pointer">
+                    <span class="text-[10px] font-medium whitespace-nowrap">동적 카메라</span>
+                    <input type="checkbox" id="dynamicCameraToggle" class="accent-indigo-500" checked>
+                </label>
+                <label class="flex items-center gap-1.5 px-2.5 h-8 bg-slate-800/90 text-slate-300 rounded-lg border border-slate-700">
+                    <span class="text-[10px] font-medium whitespace-nowrap">속도</span>
+                    <input id="speedBattleRange" type="range" min="0.25" max="4" step="0.25" value="0.5" class="w-16 accent-slate-200">
+                    <output id="speedBattleValue" class="w-7 text-right text-[10px] font-medium">0.5x</output>
+                </label>
             </div>
-            <button id="exitBattleEarlyBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors border border-slate-700">
+            <button id="exitBattleEarlyBtn" class="px-3 h-8 bg-slate-800/90 hover:bg-slate-700 text-slate-300 rounded-lg font-medium text-[10px] transition-colors border border-slate-700">
                 전투 강제 종료
             </button>
         </div>
@@ -147,7 +153,7 @@
 
     <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden opacity-0 transition-opacity duration-300 backdrop-blur-sm"></div>
 
-    <aside id="sidebar" class="fixed top-0 left-0 bottom-0 w-[320px] max-w-[85vw] bg-white z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col shadow-2xl border-r border-slate-200">
+    <aside id="sidebar" class="fixed top-0 left-0 bottom-0 w-[320px] max-w-[85vw] bg-white z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col overflow-y-auto custom-scrollbar shadow-2xl border-r border-slate-200">
         <div class="p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
             <div>
                 <h2 class="text-lg font-bold text-slate-900">설정 / 대학 목록</h2>
@@ -171,19 +177,6 @@
             </div>
         </div>
 
-        <div class="p-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-sky-50 shrink-0">
-            <div class="flex items-center justify-between">
-                <div>
-                    <span class="text-sm font-bold text-slate-900 flex items-center gap-1.5">⚙️ 동적 카메라</span>
-                    <p class="text-[10px] text-slate-500 mt-0.5 leading-tight">전투 중 카메라가 두 전투원을 부드럽게 추적</p>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="dynamicCameraToggle" class="sr-only peer">
-                    <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500 shadow-inner"></div>
-                </label>
-            </div>
-        </div>
-
         <div class="p-4 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50 shrink-0">
             <div class="flex items-center justify-between">
                 <div>
@@ -200,26 +193,47 @@
                     <input id="customBlueName" value="P1" maxlength="18" class="min-w-0 px-2.5 py-2 rounded-lg border border-blue-200 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="블루 이름">
                     <input id="customRedName" value="P2" maxlength="18" class="min-w-0 px-2.5 py-2 rounded-lg border border-red-200 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-red-400" placeholder="레드 이름">
                 </div>
-                <div class="grid grid-cols-2 gap-2">
+                <button id="customDetailsBtn" type="button" class="w-full py-2 rounded-lg bg-white/80 hover:bg-white border border-emerald-200 text-emerald-800 text-xs font-bold transition-colors">세부 설정</button>
+                <div id="customDetailsPanel" class="hidden space-y-3">
+                  <div class="grid grid-cols-2 gap-2">
                     <div class="rounded-lg border border-blue-100 bg-blue-50/70 p-2 space-y-1.5">
                         <label class="flex items-center justify-between text-[10px] font-bold text-blue-900"><span>체력</span><output id="customBlueHpValue">4000</output></label>
-                        <input id="customBlueHp" type="number" min="100" max="10000" step="100" value="4000" class="w-full px-2 py-1 rounded border border-blue-200 text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <input id="customBlueHp" type="number" min="100" max="1000000000" step="100" value="4000" class="w-full px-2 py-1 rounded border border-blue-200 text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-blue-400">
                         <label class="flex items-center justify-between text-[10px] font-bold text-blue-900"><span>쿨타임 가속</span><output id="customBlueCooldownValue">0%</output></label>
-                        <input id="customBlueCooldown" type="range" min="-100" max="400" step="10" value="0" class="w-full accent-blue-600">
+                        <input id="customBlueCooldown" type="range" min="-100" max="2000" step="10" value="0" class="w-full accent-blue-600">
+                        <label class="flex items-center justify-between text-[10px] font-bold text-blue-900"><span>공격력</span><output id="customBlueAttackValue">100%</output></label>
+                        <input id="customBlueAttack" type="range" min="0" max="1000" step="10" value="100" class="w-full accent-blue-600">
+                        <label class="flex items-center justify-between text-[10px] font-bold text-blue-900"><span>이동속도</span><output id="customBlueMoveValue">100%</output></label>
+                        <input id="customBlueMove" type="range" min="0" max="300" step="10" value="100" class="w-full accent-blue-600">
+                        <label class="flex items-center justify-between text-[10px] font-bold text-blue-900"><span>AI</span><input id="customBlueAi" type="checkbox" checked class="accent-blue-600"></label>
                     </div>
                     <div class="rounded-lg border border-red-100 bg-red-50/70 p-2 space-y-1.5">
                         <label class="flex items-center justify-between text-[10px] font-bold text-red-900"><span>체력</span><output id="customRedHpValue">4000</output></label>
-                        <input id="customRedHp" type="number" min="100" max="10000" step="100" value="4000" class="w-full px-2 py-1 rounded border border-red-200 text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-red-400">
+                        <input id="customRedHp" type="number" min="100" max="1000000000" step="100" value="4000" class="w-full px-2 py-1 rounded border border-red-200 text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-red-400">
                         <label class="flex items-center justify-between text-[10px] font-bold text-red-900"><span>쿨타임 가속</span><output id="customRedCooldownValue">0%</output></label>
-                        <input id="customRedCooldown" type="range" min="-100" max="400" step="10" value="0" class="w-full accent-red-600">
+                        <input id="customRedCooldown" type="range" min="-100" max="2000" step="10" value="0" class="w-full accent-red-600">
+                        <label class="flex items-center justify-between text-[10px] font-bold text-red-900"><span>공격력</span><output id="customRedAttackValue">100%</output></label>
+                        <input id="customRedAttack" type="range" min="0" max="1000" step="10" value="100" class="w-full accent-red-600">
+                        <label class="flex items-center justify-between text-[10px] font-bold text-red-900"><span>이동속도</span><output id="customRedMoveValue">100%</output></label>
+                        <input id="customRedMove" type="range" min="0" max="300" step="10" value="100" class="w-full accent-red-600">
+                        <label class="flex items-center justify-between text-[10px] font-bold text-red-900"><span>AI</span><input id="customRedAi" type="checkbox" checked class="accent-red-600"></label>
                     </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
+                  </div>
+                  <div class="grid grid-cols-2 gap-2">
                     <div id="customBlueSkills" class="space-y-1.5"></div>
                     <div id="customRedSkills" class="space-y-1.5"></div>
+                  </div>
                 </div>
                 <button id="startCustomBattleBtn" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors">커스텀 대결 시작</button>
             </div>
+        </div>
+
+        <div class="p-4 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50 shrink-0">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-sm font-bold text-slate-900">화면 흔들림</span>
+                <output id="screenShakeValue" class="text-xs font-bold text-orange-700">100%</output>
+            </div>
+            <input id="screenShakeRange" type="range" min="0" max="200" step="10" value="100" class="w-full accent-orange-500">
         </div>
 
         <div class="p-3 border-b border-slate-100 bg-slate-50 shrink-0">
@@ -234,7 +248,7 @@
             <button id="deselectAllBtn" class="flex-1 text-xs font-semibold py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors">전체 해제</button>
             <button id="shuffleBtn" class="text-xs font-semibold px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors">순서 섞기</button>
         </div>
-        <div id="universityList" class="flex-1 overflow-y-auto p-3 custom-scrollbar flex flex-col gap-1.5 bg-slate-50"></div>
+        <div id="universityList" class="p-3 flex flex-col gap-1.5 bg-slate-50"></div>
     </aside>
 
     <div id="resultModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
@@ -315,10 +329,17 @@
         }
         function loadSavedBattleSpeed() {
             const v = parseFloat(localStorage.getItem('univ_roulette_battleSpeed'));
-            return [0.5, 1, 2, 4].includes(v) ? v : 1;
+            return Number.isFinite(v) && v >= 0.25 && v <= 4 ? v : 0.5;
         }
         function saveBattleSpeed() {
             localStorage.setItem('univ_roulette_battleSpeed', battleSpeed);
+        }
+        function loadScreenShake() {
+            const v = Number(localStorage.getItem('univ_roulette_screenShake'));
+            return Number.isFinite(v) ? Math.min(200, Math.max(0, v)) : 100;
+        }
+        function saveScreenShake(value) {
+            localStorage.setItem('univ_roulette_screenShake', value);
         }
 
         loadData();
@@ -340,18 +361,32 @@
         const sidebarOverlay = document.getElementById('sidebarOverlay'), wheelContainer = document.getElementById('wheelContainer');
         const battleToggle = document.getElementById('battleToggle');
         const dynamicCameraToggle = document.getElementById('dynamicCameraToggle');
+        const screenShakeRange = document.getElementById('screenShakeRange');
+        const screenShakeValue = document.getElementById('screenShakeValue');
         const customBattleToggle = document.getElementById('customBattleToggle');
         const customBattlePanel = document.getElementById('customBattlePanel');
+        const customDetailsBtn = document.getElementById('customDetailsBtn');
+        const customDetailsPanel = document.getElementById('customDetailsPanel');
         const customBlueName = document.getElementById('customBlueName');
         const customRedName = document.getElementById('customRedName');
         const customBlueHp = document.getElementById('customBlueHp');
         const customRedHp = document.getElementById('customRedHp');
         const customBlueCooldown = document.getElementById('customBlueCooldown');
         const customRedCooldown = document.getElementById('customRedCooldown');
+        const customBlueAttack = document.getElementById('customBlueAttack');
+        const customRedAttack = document.getElementById('customRedAttack');
+        const customBlueMove = document.getElementById('customBlueMove');
+        const customRedMove = document.getElementById('customRedMove');
+        const customBlueAi = document.getElementById('customBlueAi');
+        const customRedAi = document.getElementById('customRedAi');
         const customBlueHpValue = document.getElementById('customBlueHpValue');
         const customRedHpValue = document.getElementById('customRedHpValue');
         const customBlueCooldownValue = document.getElementById('customBlueCooldownValue');
         const customRedCooldownValue = document.getElementById('customRedCooldownValue');
+        const customBlueAttackValue = document.getElementById('customBlueAttackValue');
+        const customRedAttackValue = document.getElementById('customRedAttackValue');
+        const customBlueMoveValue = document.getElementById('customBlueMoveValue');
+        const customRedMoveValue = document.getElementById('customRedMoveValue');
         const customBlueSkills = document.getElementById('customBlueSkills');
         const customRedSkills = document.getElementById('customRedSkills');
         const startCustomBattleBtn = document.getElementById('startCustomBattleBtn');
@@ -369,6 +404,8 @@
         
         battleToggle.checked = isBattleMode;
         dynamicCameraToggle.checked = isDynamicCamera;
+        screenShakeRange.value = loadScreenShake();
+        screenShakeValue.value = `${screenShakeRange.value}%`;
         if(isBattleMode) {
             battleStatusBanner.classList.remove('hidden');
             battleStatusText.textContent = "1차 선발: 블루 코너 추첨 중..."; spinBtnText.textContent = "블루 코너(1차) 추첨하기";
@@ -549,11 +586,12 @@
         const battleCanvas = document.getElementById('battleCanvas'), battleCtx = battleCanvas.getContext('2d');
         let battleAnimationFrame = null, fighter1, fighter2;
         let battleParticles = [], projectiles = [], damageTexts = [], visualEffects = [], structures = [];
-        let battlePaused = false, battleSpeed = loadSavedBattleSpeed(), battleFrameCount = 0;
+        let battlePaused = false, battleSpeed = loadSavedBattleSpeed(), battleFrameCount = 0, battleSimulationAccumulator = 0;
         let camera = { x: 0, y: 0, zoom: 1 };
 
         const pauseBattleBtn = document.getElementById('pauseBattleBtn');
-        const speedBattleBtn = document.getElementById('speedBattleBtn');
+        const speedBattleRange = document.getElementById('speedBattleRange');
+        const speedBattleValue = document.getElementById('speedBattleValue');
 
         const SKILLS = [
             { id: 'dash', name: '돌진' }, { id: 'laser', name: '레이저' },
@@ -591,17 +629,19 @@
             return [...container.querySelectorAll('select')].map(select => SKILLS.find(skill => skill.id === select.value));
         }
 
-        function getCustomBattleSettings(hpInput, cooldownInput) {
-            const hp = Math.min(10000, Math.max(100, Number(hpInput.value) || 4000));
-            const cooldownAcceleration = Math.min(400, Math.max(-100, Number(cooldownInput.value) || 0));
-            return { maxHp: hp, cooldownAcceleration: cooldownAcceleration };
+        function getCustomBattleSettings(hpInput, cooldownInput, attackInput, moveInput, aiInput) {
+            const hp = Math.min(1000000000, Math.max(100, Number(hpInput.value) || 4000));
+            const cooldownAcceleration = Math.min(2000, Math.max(-100, Number(cooldownInput.value) || 0));
+            const attackMultiplier = Math.max(0, Number(attackInput.value) || 100) / 100;
+            const moveMultiplier = Math.max(0, Number(moveInput.value) || 100) / 100;
+            return { maxHp: hp, cooldownAcceleration, attackMultiplier, moveMultiplier, aiEnabled: aiInput.checked };
         }
 
         function startCustomBattle() {
             const blueName = customBlueName.value.trim() || 'P1';
             const redName = customRedName.value.trim() || 'P2';
-            currentBlueBattleSettings = getCustomBattleSettings(customBlueHp, customBlueCooldown);
-            currentRedBattleSettings = getCustomBattleSettings(customRedHp, customRedCooldown);
+            currentBlueBattleSettings = getCustomBattleSettings(customBlueHp, customBlueCooldown, customBlueAttack, customBlueMove, customBlueAi);
+            currentRedBattleSettings = getCustomBattleSettings(customRedHp, customRedCooldown, customRedAttack, customRedMove, customRedAi);
             currentBlueUniv = { name: blueName };
             currentRedUniv = { name: redName };
             selectedFighters = [];
@@ -613,13 +653,17 @@
         renderCustomSkillSelectors(customRedSkills, 'border-red-200');
 
         function updateCustomBattleOutputs() {
-            customBlueHpValue.value = Math.min(10000, Math.max(100, Number(customBlueHp.value) || 4000));
-            customRedHpValue.value = Math.min(10000, Math.max(100, Number(customRedHp.value) || 4000));
+            customBlueHpValue.value = Math.min(1000000000, Math.max(100, Number(customBlueHp.value) || 4000));
+            customRedHpValue.value = Math.min(1000000000, Math.max(100, Number(customRedHp.value) || 4000));
             customBlueCooldownValue.value = `${customBlueCooldown.value}%`;
             customRedCooldownValue.value = `${customRedCooldown.value}%`;
+            customBlueAttackValue.value = `${customBlueAttack.value}%`;
+            customRedAttackValue.value = `${customRedAttack.value}%`;
+            customBlueMoveValue.value = `${customBlueMove.value}%`;
+            customRedMoveValue.value = `${customRedMove.value}%`;
         }
 
-        [customBlueHp, customRedHp, customBlueCooldown, customRedCooldown].forEach(input => {
+        [customBlueHp, customRedHp, customBlueCooldown, customRedCooldown, customBlueAttack, customRedAttack, customBlueMove, customRedMove].forEach(input => {
             input.addEventListener('input', updateCustomBattleOutputs);
         });
         updateCustomBattleOutputs();
@@ -644,9 +688,13 @@
                 maxHp: battleSettings?.maxHp || 4000, hp: battleSettings?.maxHp || 4000, isBlue: isBlue,
                 skills: mySkills, cooldown: 0, shield: 0,
                 cooldownRate: 1 + (battleSettings?.cooldownAcceleration || 0) / 100,
+                attackMultiplier: battleSettings ? battleSettings.attackMultiplier : 1,
+                moveMultiplier: battleSettings ? battleSettings.moveMultiplier : 1,
+                aiEnabled: battleSettings?.aiEnabled !== false,
                 history: [], frozen: 0, gigant: 0,
                 flying: 0, stealth: 0, reflect: 0, slowed: 0, timeStopped: 0,
                 timeAccel: 0, lifesteal: 0,
+                blackholeTimer: 0, blackholeSource: null, blackholeDamageTimer: 0,
                 frozenBy: null, spinOrbit: 0, spinAngle: 0,
                 state: 'IDLE', stateTimer: 0
             };
@@ -657,8 +705,12 @@
             battleResultOverlay.classList.add('hidden'); battleResultOverlay.classList.remove('flex');
 
             battlePaused = false; battleFrameCount = 0;
-            pauseBattleBtn.textContent = "⏸ 일시정지";
-            speedBattleBtn.textContent = `⚡ ${battleSpeed}x`;
+            battleSimulationAccumulator = 0;
+            pauseBattleBtn.innerHTML = '<svg id="pauseBattleIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>';
+            pauseBattleBtn.setAttribute('aria-label', '일시정지');
+            pauseBattleBtn.title = '일시정지';
+            speedBattleRange.value = battleSpeed;
+            speedBattleValue.value = `${battleSpeed}x`;
 
             blueTeamName.textContent = univBlue.name; redTeamName.textContent = univRed.name;
             const rect = battleCanvas.parentElement.getBoundingClientRect();
@@ -683,15 +735,16 @@
 
         pauseBattleBtn.addEventListener('click', () => {
             battlePaused = !battlePaused;
-            pauseBattleBtn.textContent = battlePaused ? "▶ 재개" : "⏸ 일시정지";
+            pauseBattleBtn.innerHTML = battlePaused
+                ? '<svg id="pauseBattleIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"></path></svg>'
+                : '<svg id="pauseBattleIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>';
+            pauseBattleBtn.setAttribute('aria-label', battlePaused ? '재개' : '일시정지');
+            pauseBattleBtn.title = battlePaused ? '재개' : '일시정지';
         });
 
-        speedBattleBtn.addEventListener('click', () => {
-            if(battleSpeed === 1) battleSpeed = 2;
-            else if(battleSpeed === 2) battleSpeed = 4;
-            else if(battleSpeed === 4) battleSpeed = 0.5; // 슬로우 모션
-            else battleSpeed = 1;
-            speedBattleBtn.textContent = `⚡ ${battleSpeed}x`;
+        speedBattleRange.addEventListener('input', (event) => {
+            battleSpeed = Number(event.target.value);
+            speedBattleValue.value = `${battleSpeed}x`;
             saveBattleSpeed();
         });
 
@@ -713,6 +766,9 @@
         }
 
         function triggerScreenShake(heavy = false) {
+            const shakeScale = loadScreenShake() / 100;
+            battleArenaView.style.setProperty('--shake-scale', shakeScale);
+            if (shakeScale <= 0) return;
             const cls = heavy ? 'shake-screen-heavy' : 'shake-screen';
             battleArenaView.classList.remove('shake-screen', 'shake-screen-heavy');
             void battleArenaView.offsetWidth; battleArenaView.classList.add(cls);
@@ -736,30 +792,55 @@
             if(type === 'laser') { speed = 35; radius = 5; dmg = 80; }
             if(type === 'bullet') { speed = 22; radius = 4; dmg = 35; }
             if(type === 'meteor') { speed = 8; radius = 25; dmg = 350; c = caster.color; }
-            if(type === 'tornado') { speed = 5; radius = 30; dmg = 8; penetrate = true; life = 200; homing = true; }
+            if(type === 'tornado') { speed = 2.5; radius = 30; dmg = 8; penetrate = true; life = 200; homing = true; }
             if(type === 'homing') { speed = 12; radius = 6; dmg = 70; homing = true; }
 
             projectiles.push({
                 x: caster.x, y: caster.y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
                 radius: radius, color: c, damage: dmg, owner: caster, type: type, life: life,
-                penetrate: penetrate, homing: homing, maxSpeed: speed,
-                hitTargets: []
+                penetrate: penetrate, homing: homing, maxSpeed: type === 'tornado' ? 8 : speed,
+                spin: Math.random() * Math.PI * 2, hitTargets: []
             });
         }
 
         function applyDamage(defender, attacker, dmg) {
+            dmg = Math.max(0, Number(dmg) || 0) * (attacker?.attackMultiplier || 1);
             if (defender.stealth > 0) dmg = Math.floor(dmg * 0.3); // 은신 중 피해 감소
             if (defender.shield > 0) { const b = Math.min(defender.shield, dmg); dmg -= b; defender.shield -= b; }
             if (defender.reflect > 0) { // 반사: 다음 피해를 공격자에게 되돌림
                 defender.reflect = 0;
                 attacker.hp -= dmg;
+                tryTotemRevive(attacker);
                 createDamageText(attacker.x, attacker.y, `반사! -${dmg}`, defender.colorLight, 18);
                 return;
             }
             defender.hp -= dmg;
+            tryTotemRevive(defender);
             if (attacker.lifesteal > 0 && dmg > 0) {
                 attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.ceil(dmg * 0.35));
             }
+        }
+
+        function tryTotemRevive(fighter) {
+            if (fighter.hp > 0) return false;
+            const totemIndex = structures.findIndex(st => st.type === 'totem' && st.owner === fighter && st.hp > 0);
+            if (totemIndex < 0) return false;
+            const totem = structures[totemIndex];
+            structures.splice(totemIndex, 1);
+            fighter.hp = Math.max(1, Math.ceil(fighter.maxHp * 0.3));
+            fighter.x = totem.x;
+            fighter.y = totem.y;
+            fighter.vx = 0;
+            fighter.vy = 0;
+            fighter.blackholeTimer = 0;
+            fighter.blackholeSource = null;
+            fighter.frozen = 0;
+            fighter.timeStopped = 0;
+            createParticles(fighter.x, fighter.y, fighter.colorLight, 60, 16, 1.6);
+            addVisualEffect('ring', fighter.x, fighter.y, fighter.colorLight, 180);
+            createDamageText(fighter.x, fighter.y, '부활! 30%', fighter.colorLight, 20);
+            triggerScreenShake(true);
+            return true;
         }
 
         function applySkill(caster, target) {
@@ -785,9 +866,13 @@
                     case 'shield': caster.shield = 400; createParticles(caster.x, caster.y, c, 20); break;
                     case 'meteor': shootProjectile(caster, target, 'meteor'); break;
                     case 'blackhole':
-                        target.vx += (caster.x - target.x) * 0.15; target.vy += (caster.y - target.y) * 0.15;
-                        applyDamage(target, caster, 80); createParticles(target.x, target.y, caster.colorDark, 40, 8);
-                        addVisualEffect('vortex', caster.x, caster.y, caster.colorDark, 100);
+                        target.blackholeTimer = 160;
+                        target.blackholeSource = caster;
+                        target.blackholeDamageTimer = 0;
+                        target.vx += (caster.x - target.x) * 0.6; target.vy += (caster.y - target.y) * 0.6;
+                        applyDamage(target, caster, 140); createParticles(target.x, target.y, caster.colorDark, 55, 10);
+                        addVisualEffect('vortex', caster.x, caster.y, caster.colorDark, 150);
+                        triggerScreenShake(true);
                         break;
                     case 'nova':
                         applyDamage(target, caster, 150); createParticles(caster.x, caster.y, c, 60, 25, 2);
@@ -855,8 +940,8 @@
                     }
                     case 'fly':
                         caster.z = 70; caster.vz = 0; caster.flying = 100;
-                        createParticles(caster.x, caster.y, '#ffffff', 32, 10, 1.4);
-                        addVisualEffect('fly', caster.x, caster.y, '#bae6fd', 70);
+                        createParticles(caster.x, caster.y, c, 32, 10, 1.4);
+                        addVisualEffect('fly', caster.x, caster.y, c, 70);
                         break;
                     case 'stealth':
                         caster.stealth = 110;
@@ -929,7 +1014,7 @@
                         for (let i = 0; i < 6; i++) {
                             projectiles.push({
                                 x: target.x + (Math.random() - 0.5) * 260, y: target.y - 260 - Math.random() * 180,
-                                vx: 0, vy: 8 + Math.random() * 3, radius: 20, color: '#f97316',
+                                vx: 0, vy: 8 + Math.random() * 3, radius: 20, color: caster.color, colorLight: caster.colorLight, colorDark: caster.colorDark,
                                 damage: 220, owner: caster, type: 'meteorRain', life: 90 + i * 4,
                                 penetrate: false, homing: false, maxSpeed: 0, hitTargets: []
                             });
@@ -971,6 +1056,38 @@
             if (f.frozen > 0) {
                 f.frozen--;
                 if (f.frozen <= 0) f.frozenBy = null;
+                return;
+            }
+
+            if (f.blackholeTimer > 0) {
+                f.blackholeTimer--;
+                const source = f.blackholeSource;
+                if (source && source.hp > 0) {
+                    const pullDx = source.x - f.x, pullDy = source.y - f.y;
+                    const pullDistance = Math.hypot(pullDx, pullDy) || 0.1;
+                    const blackholeRadius = 150;
+                    if (pullDistance > blackholeRadius) {
+                        f.x = source.x - (pullDx / pullDistance) * blackholeRadius;
+                        f.y = source.y - (pullDy / pullDistance) * blackholeRadius;
+                    }
+                    f.vx *= 0.72; f.vy *= 0.72;
+                    const pullStrength = Math.min(12, 7 + pullDistance / 30);
+                    f.vx += (pullDx / pullDistance) * pullStrength;
+                    f.vy += (pullDy / pullDistance) * pullStrength;
+                    f.blackholeDamageTimer--;
+                    if (f.blackholeDamageTimer <= 0) {
+                        f.blackholeDamageTimer = 16;
+                        applyDamage(f, source, 30);
+                        createDamageText(f.x, f.y, '-30', source.colorLight, 14);
+                    }
+                } else {
+                    f.blackholeTimer = 0;
+                    f.blackholeSource = null;
+                }
+            }
+
+            if (!f.aiEnabled) {
+                f.vx = 0; f.vy = 0;
                 return;
             }
 
@@ -1029,7 +1146,7 @@
 
             const zPenalty = f.z > 0 ? 0.5 : 1.0;
             const slowPenalty = f.slowed > 0 ? 0.4 : 1.0; // 감속 상태에서는 가속 저하
-            const speedAccel = (f.gigant > 0 ? 1.5 : 3.5) * zPenalty * slowPenalty * (f.timeAccel > 0 ? 1.6 : 1);
+            const speedAccel = (f.gigant > 0 ? 1.5 : 3.5) * zPenalty * slowPenalty * (f.timeAccel > 0 ? 1.6 : 1) * f.moveMultiplier;
             const angle = Math.atan2(dy, dx);
 
             if (f.state === 'CHASE' || f.state === 'ATTACK') {
@@ -1163,6 +1280,10 @@
 
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 let p = projectiles[i];
+                if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.vx) || !Number.isFinite(p.vy) || !Number.isFinite(p.life)) {
+                    projectiles.splice(i, 1); continue;
+                }
+                p.hitCooldown = Math.max(0, (p.hitCooldown || 0) - 1);
                 if (p.type === 'meteorRain') {
                     p.life--;
                     p.x += p.vx; p.y += p.vy;
@@ -1173,8 +1294,8 @@
                                 applyDamage(target, p.owner, p.damage);
                             }
                         });
-                        createParticles(p.x, p.y, '#fb923c', 35, 14, 1.8);
-                        addVisualEffect('ring', p.x, p.y, '#fb923c', 100);
+                        createParticles(p.x, p.y, p.color, 35, 14, 1.8);
+                        addVisualEffect('ring', p.x, p.y, p.color, 100);
                         triggerScreenShake();
                         projectiles.splice(i, 1);
                     }
@@ -1211,9 +1332,24 @@
                     let target = p.owner === fighter1 ? fighter2 : fighter1;
                     let pDx = target.x - p.x; let pDy = target.y - p.y;
                     let angle = (pDx === 0 && pDy === 0) ? 0 : Math.atan2(pDy, pDx);
-                    p.vx += Math.cos(angle) * 1.5; p.vy += Math.sin(angle) * 1.5;
+                    const steering = p.type === 'tornado' ? 0.45 : 1.5;
+                    p.vx += Math.cos(angle) * steering; p.vy += Math.sin(angle) * steering;
+                    if (p.type === 'tornado') {
+                        const pullDx = p.x - target.x, pullDy = p.y - target.y;
+                        const pullDistance = Math.hypot(pullDx, pullDy);
+                        if (target.z === 0 && pullDistance < 125 && pullDistance > 0.1) {
+                            const pullStrength = 0.75 * (1 - pullDistance / 125);
+                            target.vx += (pullDx / pullDistance) * pullStrength;
+                            target.vy += (pullDy / pullDistance) * pullStrength;
+                        }
+                        const currentSpeed = Math.hypot(p.vx, p.vy) || 0.1;
+                        p.vx += (p.vx / currentSpeed) * 0.12;
+                        p.vy += (p.vy / currentSpeed) * 0.12;
+                        p.spin += 0.18 + Math.min(currentSpeed, 8) * 0.045;
+                    }
                     let spd = Math.hypot(p.vx, p.vy) || 0.1;
-                    if(spd > p.maxSpeed) { p.vx = (p.vx/spd)*p.maxSpeed; p.vy = (p.vy/spd)*p.maxSpeed; }
+                    const maxSpeed = Number.isFinite(p.maxSpeed) && p.maxSpeed > 0 ? p.maxSpeed : 12;
+                    if(spd > maxSpeed) { p.vx = (p.vx/spd)*maxSpeed; p.vy = (p.vy/spd)*maxSpeed; }
                 }
                 p.x += p.vx; p.y += p.vy; p.life--;
                 
@@ -1224,11 +1360,12 @@
                 let target = p.owner === fighter1 ? fighter2 : fighter1;
                 if (target.z > 0 && p.type !== 'meteor') continue; 
 
-                if (Math.hypot(target.x - p.x, target.y - p.y) < target.radius + p.radius) {
+                if (p.hitCooldown <= 0 && Math.hypot(target.x - p.x, target.y - p.y) < target.radius + p.radius) {
                     applyDamage(target, p.owner, p.damage);
                     createParticles(p.x, p.y, p.color, 20, 10);
                     if(p.type === 'meteor') { triggerScreenShake(true); addVisualEffect('ring', p.x, p.y, p.color, 150); }
                     if(!p.penetrate) projectiles.splice(i, 1);
+                    else p.hitCooldown = p.type === 'tornado' ? 10 : 3;
                 }
             }
 
@@ -1420,13 +1557,11 @@
             battleFrameCount++;
             
             if (!battlePaused) {
-                if (battleSpeed === 0.5) {
-                    if (battleFrameCount % 2 === 0) updatePhysics(w, h);
-                } else {
-                    for (let s = 0; s < battleSpeed; s++) {
-                        updatePhysics(w, h);
-                        if (fighter1.hp <= 0 || fighter2.hp <= 0) break;
-                    }
+                battleSimulationAccumulator += battleSpeed;
+                while (battleSimulationAccumulator >= 1) {
+                    updatePhysics(w, h);
+                    battleSimulationAccumulator -= 1;
+                    if (fighter1.hp <= 0 || fighter2.hp <= 0) break;
                 }
             }
 
@@ -1475,16 +1610,28 @@
 
                 if (p.type === 'meteorRain') {
                     const meteor = battleCtx.createRadialGradient(p.x - radius * 0.3, p.y - radius * 0.3, 2, p.x, p.y, radius);
-                    meteor.addColorStop(0, '#fff7ed'); meteor.addColorStop(0.35, '#fb923c'); meteor.addColorStop(1, '#c2410c');
+                    meteor.addColorStop(0, '#ffffff'); meteor.addColorStop(0.35, p.colorLight || p.color); meteor.addColorStop(1, p.colorDark || p.color);
                     battleCtx.fillStyle = meteor;
                     battleCtx.beginPath(); battleCtx.arc(p.x, p.y, radius, 0, Math.PI * 2); battleCtx.fill();
                 } else if (p.type === 'tornado') {
+                    const tornadoSpeed = Math.hypot(p.vx, p.vy);
+                    const pulse = 1 + Math.sin((p.spin || 0) * 2) * 0.12;
+                    const tornadoRadius = radius * pulse;
                     battleCtx.strokeStyle = p.color; battleCtx.lineWidth = 3;
+                    battleCtx.translate(p.x, p.y);
                     for (let ring = 0; ring < 3; ring++) {
                         battleCtx.beginPath();
-                        battleCtx.ellipse(p.x, p.y + (ring - 1) * 9, radius * (1 - ring * 0.16), 5, 0, Math.PI * 2);
+                        const ringRadius = tornadoRadius * (0.42 + ring * 0.25);
+                        const startAngle = (p.spin || 0) + ring * 1.8;
+                        battleCtx.arc(0, 0, ringRadius, startAngle, startAngle + Math.PI * 1.55);
                         battleCtx.stroke();
                     }
+                    battleCtx.globalAlpha = Math.min(0.75, 0.25 + tornadoSpeed / 12);
+                    battleCtx.lineWidth = 1.5;
+                    battleCtx.beginPath(); battleCtx.arc(0, 0, tornadoRadius + 8, 0, Math.PI * 2); battleCtx.stroke();
+                    battleCtx.globalAlpha = 0.2;
+                    battleCtx.fillStyle = p.color;
+                    battleCtx.beginPath(); battleCtx.arc(0, 0, tornadoRadius * 0.3, 0, Math.PI * 2); battleCtx.fill();
                 } else if (p.type === 'meteor') {
                     const meteor = battleCtx.createRadialGradient(p.x - radius * 0.3, p.y - radius * 0.3, 2, p.x, p.y, radius);
                     meteor.addColorStop(0, '#fff7ed'); meteor.addColorStop(0.35, '#fbbf24'); meteor.addColorStop(1, p.color);
@@ -1573,6 +1720,11 @@
             saveDynamicCamera();
         });
 
+        screenShakeRange.addEventListener('input', (e) => {
+            screenShakeValue.value = `${e.target.value}%`;
+            saveScreenShake(Number(e.target.value));
+        });
+
         customBattleToggle.addEventListener('change', (e) => {
             isCustomBattleMode = e.target.checked;
             customBattlePanel.classList.toggle('hidden', !isCustomBattleMode);
@@ -1582,6 +1734,10 @@
                 battleStatusBanner.classList.add('hidden');
                 spinBtnText.textContent = '추첨 시작!';
             }
+        });
+        customDetailsBtn.addEventListener('click', () => {
+            const isHidden = customDetailsPanel.classList.toggle('hidden');
+            customDetailsBtn.textContent = isHidden ? '세부 설정' : '세부 설정 닫기';
         });
         startCustomBattleBtn.addEventListener('click', startCustomBattle);
 
